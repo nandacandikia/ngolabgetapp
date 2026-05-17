@@ -1,0 +1,6 @@
+{
+  "name": "NGOLAB BAKSO MAS YANTO",
+  "description": "Professional food ordering system with automated table detection and digital receipts.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": []
+}
