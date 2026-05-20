@@ -8,12 +8,12 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3001;
 
   app.use(express.json());
 
   // API Routes
-  const KASIR_DOMAIN = "https://easy-hornets-pay.loca.lt";
+  const KASIR_DOMAIN = "http://localhost:5000";
   const API_KASIR_URL = `${KASIR_DOMAIN}/api/menu`;
   const APPS_SCRIPT_URL = process.env.VITE_APPS_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbx7gVD2jM-XpZg5ZVkjSsp70RO0corDrUN9gM2SF-NkA2SMo0Iejt5wt8HF3Lw_WZqiYw/exec";
 
@@ -212,8 +212,20 @@ async function startServer() {
   console.log(`Server starting in ${isProduction ? "PRODUCTION" : "DEVELOPMENT"} mode`);
 
   if (!isProduction) {
+    const { default: tailwindcss } = await import('@tailwindcss/vite');
+    const { default: react } = await import('@vitejs/plugin-react');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      configFile: false,
+      plugins: [react(), tailwindcss()],
+      define: {
+        'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY),
+      },
+      resolve: {
+        alias: {
+          '@': path.resolve(__dirname, '.'),
+        },
+      },
+      server: { middlewareMode: true, hmr: process.env.DISABLE_HMR !== 'true' },
       appType: "spa",
     });
     app.use(vite.middlewares);

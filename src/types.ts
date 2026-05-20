@@ -27,6 +27,7 @@ export interface Order {
   paymentMethod: PaymentMethod;
   timestamp: string;
   status: 'PENDING' | 'DIPROSES' | 'SELESAI' | 'DIBATALKAN';
+  customerName?: string;
   pointsEarned?: number;
   rating?: number;
   review?: string;

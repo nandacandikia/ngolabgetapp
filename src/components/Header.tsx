@@ -3,6 +3,8 @@ import { MapPin, Search, Star, LogOut } from 'lucide-react';
 
 interface HeaderProps {
   tableNumber: string;
+  isGuest?: boolean;
+  zoneName?: string;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   points: number;
@@ -10,7 +12,7 @@ interface HeaderProps {
   onLogout: () => void;
 }
 
-export default function Header({ tableNumber, searchQuery, setSearchQuery, points, onPointsClick, onLogout }: HeaderProps) {
+export default function Header({ tableNumber, isGuest, zoneName, searchQuery, setSearchQuery, points, onPointsClick, onLogout }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-3 border-b border-slate-100 flex flex-col gap-3">
       <div className="max-w-4xl mx-auto w-full flex items-center justify-between">
@@ -26,28 +28,37 @@ export default function Header({ tableNumber, searchQuery, setSearchQuery, point
 
         <div className="flex items-center gap-2">
           {/* Points Badge */}
-          <button 
-            onClick={onPointsClick}
-            className="bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-[15px] flex items-center gap-2 hover:bg-amber-100/50 transition-colors cursor-pointer active:scale-95"
-          >
-            <div className="bg-amber-400 p-1 rounded-full text-white">
-              <Star size={10} fill="currentColor" strokeWidth={0} />
-            </div>
-            <div className="text-left">
-              <p className="text-[8px] text-amber-600 font-black uppercase leading-none">Poin Saya</p>
-              <p className="font-bold text-[11px] text-amber-700 leading-tight">{points.toLocaleString('id-ID')}</p>
-            </div>
-          </button>
+          {!isGuest && (
+            <button 
+              onClick={onPointsClick}
+              className="bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-[15px] flex items-center gap-2 hover:bg-amber-100/50 transition-colors cursor-pointer active:scale-95"
+            >
+              <div className="bg-amber-400 p-1 rounded-full text-white">
+                <Star size={10} fill="currentColor" strokeWidth={0} />
+              </div>
+              <div className="text-left">
+                <p className="text-[8px] text-amber-600 font-black uppercase leading-none">Poin Saya</p>
+                <p className="font-bold text-[11px] text-amber-700 leading-tight">{points.toLocaleString('id-ID')}</p>
+              </div>
+            </button>
+          )}
           
-          <div className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-[15px] flex items-center gap-2 hover:bg-slate-100 transition-colors cursor-default">
-            <div className="bg-[#FF6B00] p-1 rounded-full text-white">
-              <MapPin size={10} strokeWidth={3} />
+          {tableNumber !== 'Belum Scan' && tableNumber !== 'Mode Tamu' && (
+            <div className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-[15px] flex items-center gap-2 hover:bg-slate-100 transition-colors cursor-default">
+              <div className="bg-[#FF6B00] p-1 rounded-full text-white">
+                <MapPin size={10} strokeWidth={3} />
+              </div>
+              <div>
+                <p className="text-[8px] text-slate-400 font-black uppercase leading-none">Lokasi / Mode</p>
+                <p className="font-bold text-[11px] text-slate-700 leading-tight">
+                  {(() => {
+                    const base = /^\d+$/.test(tableNumber) ? `Meja ${tableNumber}` : tableNumber;
+                    return zoneName && zoneName !== 'Area Meja' ? `${base} (${zoneName})` : base;
+                  })()}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-[8px] text-slate-400 font-black uppercase leading-none">Lokasi</p>
-              <p className="font-bold text-[11px] text-slate-700 leading-tight">Meja {tableNumber}</p>
-            </div>
-          </div>
+          )}
 
           <button 
             onClick={onLogout}
@@ -59,16 +70,18 @@ export default function Header({ tableNumber, searchQuery, setSearchQuery, point
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto w-full relative group">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#FF6B00] transition-colors" size={16} />
-        <input
-          type="text"
-          placeholder="Mau makan apa hari ini?"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-slate-100 border-none rounded-2xl py-3 pl-12 pr-4 text-xs font-medium focus:ring-2 focus:ring-[#FF6B00]/20 outline-none transition-all placeholder:text-slate-400"
-        />
-      </div>
+      {tableNumber !== 'Belum Scan' && tableNumber !== 'Mode Tamu' && (
+        <div className="max-w-4xl mx-auto w-full relative group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#FF6B00] transition-colors" size={16} />
+          <input
+            type="text"
+            placeholder="Mau makan apa hari ini?"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-100 border-none rounded-2xl py-3 pl-12 pr-4 text-xs font-medium focus:ring-2 focus:ring-[#FF6B00]/20 outline-none transition-all placeholder:text-slate-400"
+          />
+        </div>
+      )}
     </header>
   );
 }

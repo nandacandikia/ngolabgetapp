@@ -59,14 +59,16 @@ export default function Receipt({ order, onClose }: ReceiptProps) {
             <p className="font-mono font-bold text-slate-700 bg-slate-50 px-3 py-1 rounded-lg inline-block">{order.id}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 py-6 border-y border-dashed border-slate-200">
+          <div className="grid grid-cols-2 gap-4 py-6 border-y border-dashed border-slate-200 text-left">
             <div className="space-y-1">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">Nomor Meja</p>
-              <p className="font-bold text-slate-800 text-lg">{order.tableNumber}</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">Pemesan / Meja</p>
+              <p className="font-bold text-slate-800 text-base">{order.customerName || `Meja ${order.tableNumber}`}</p>
+              <p className="text-[10px] text-slate-500 font-medium">Meja: {order.tableNumber}</p>
             </div>
             <div className="space-y-1 text-right">
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">Pembayaran</p>
-              <p className="font-bold text-slate-800 text-lg">{order.paymentMethod}</p>
+              <p className="font-bold text-slate-800 text-base">{order.paymentMethod}</p>
+              <p className="text-[10px] text-green-600 font-bold">LUNAS</p>
             </div>
           </div>
 

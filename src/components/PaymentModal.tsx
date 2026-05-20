@@ -7,7 +7,7 @@ interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   total: number;
-  onConfirm: (method: PaymentMethod) => void;
+  onConfirm: (method: PaymentMethod, customerName: string) => void;
 }
 
 const METHOD_DETAILS: Record<string, { label: string; icon: any; color: string; detail: string; subDetail: string }> = {
@@ -22,18 +22,23 @@ const METHOD_DETAILS: Record<string, { label: string; icon: any; color: string; 
 
 export default function PaymentModal({ isOpen, onClose, total, onConfirm }: PaymentModalProps) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('QRIS');
+  const [customerName, setCustomerName] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [paymentProof, setPaymentProof] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePay = () => {
+    if (!customerName.trim()) {
+      alert('Mohon masukkan nama pemesan terlebih dahulu');
+      return;
+    }
     if (selectedMethod !== 'Tunai' && !paymentProof) {
       return;
     }
     setIsProcessing(true);
     setTimeout(() => {
-      onConfirm(selectedMethod);
+      onConfirm(selectedMethod, customerName.trim());
       setIsProcessing(false);
     }, 2000);
   };
@@ -65,7 +70,7 @@ export default function PaymentModal({ isOpen, onClose, total, onConfirm }: Paym
   };
 
   const methods = Object.keys(METHOD_DETAILS) as PaymentMethod[];
-  const isButtonDisabled = selectedMethod !== 'Tunai' && !paymentProof;
+  const isButtonDisabled = !customerName.trim() || (selectedMethod !== 'Tunai' && !paymentProof);
 
   return (
     <AnimatePresence>
@@ -115,6 +120,23 @@ export default function PaymentModal({ isOpen, onClose, total, onConfirm }: Paym
                       animate={{ rotate: 360 }}
                       transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
                       className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"
+                    />
+                  </div>
+                </div>
+
+                {/* Input Nama Customer */}
+                <div className="px-6 pt-2 pb-0">
+                  <div className="space-y-1.5 text-left bg-slate-50 p-4 rounded-[28px] border border-slate-100">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1">
+                      Nama Pemesan <span className="text-[#FF6B00]">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      placeholder="Contoh: Budi (Meja 01)"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-slate-800 font-bold text-sm focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all focus:outline-none"
+                      required
                     />
                   </div>
                 </div>
