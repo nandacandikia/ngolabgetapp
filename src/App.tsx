@@ -11,6 +11,7 @@ import WelcomeScreen from './components/WelcomeScreen';
 import LoginView from './components/LoginView';
 import RegisterView from './components/RegisterView';
 import PointsModal from './components/PointsModal';
+import OrderHistoryModal from './components/OrderHistoryModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { submitScanTracking } from './services/orderService';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -67,6 +68,27 @@ export default function App() {
   const [menuData, setMenuData] = useState<MenuItem[]>([]);
   const [isLoadingMenu, setIsLoadingMenu] = useState(true);
   const [menuError, setMenuError] = useState<string | null>(null);
+
+  // STATE RIWAYAT PESANAN
+  const [orderHistory, setOrderHistory] = useState<Order[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('maslahat_order_history') || '[]');
+    } catch (e) {
+      return [];
+    }
+  });
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+  const handleUpdateOrder = (updatedOrder: Order) => {
+    setOrderHistory((prev) => {
+      const next = prev.map((o) => (o.id === updatedOrder.id ? updatedOrder : o));
+      localStorage.setItem('maslahat_order_history', JSON.stringify(next));
+      return next;
+    });
+    if (completedOrder && completedOrder.id === updatedOrder.id) {
+      setCompletedOrder(updatedOrder);
+    }
+  };
 
   useEffect(() => {
     // Fungsi untuk narik data LANGSUNG dari MySQL Kasir via Localtunnel
@@ -385,6 +407,11 @@ export default function App() {
       }
 
       setCompletedOrder(newOrder);
+      setOrderHistory((prev) => {
+        const next = [newOrder, ...prev];
+        localStorage.setItem('maslahat_order_history', JSON.stringify(next));
+        return next;
+      });
       setShowStatus(true);
       setCart([]);
       setIsPaymentOpen(false);
@@ -539,6 +566,7 @@ export default function App() {
         points={points} 
         onPointsClick={() => setIsPointsModalOpen(true)}
         onLogout={handleLogout}
+        onHistoryClick={() => setIsHistoryOpen(true)}
       />
 
       <PointsModal 
@@ -864,8 +892,23 @@ export default function App() {
       </AnimatePresence>
 
       {completedOrder && showStatus && (
-        <Receipt order={completedOrder} onClose={() => setShowStatus(false)} />
+        <Receipt 
+          order={completedOrder} 
+          onClose={() => setShowStatus(false)} 
+          onUpdateOrder={handleUpdateOrder}
+        />
       )}
+
+      <OrderHistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        orders={orderHistory}
+        onViewReceipt={(order) => {
+          setCompletedOrder(order);
+          setShowStatus(true);
+          setIsHistoryOpen(false);
+        }}
+      />
 
       {/* Modal Popup Notifikasi Kring Restoran */}
       <AnimatePresence>

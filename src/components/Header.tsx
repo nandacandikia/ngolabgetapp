@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Search, Star, LogOut } from 'lucide-react';
+import { MapPin, Search, Star, LogOut, History } from 'lucide-react';
 
 interface HeaderProps {
   tableNumber: string;
@@ -10,9 +10,10 @@ interface HeaderProps {
   points: number;
   onPointsClick: () => void;
   onLogout: () => void;
+  onHistoryClick: () => void;
 }
 
-export default function Header({ tableNumber, isGuest, zoneName, searchQuery, setSearchQuery, points, onPointsClick, onLogout }: HeaderProps) {
+export default function Header({ tableNumber, isGuest, zoneName, searchQuery, setSearchQuery, points, onPointsClick, onLogout, onHistoryClick }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-3 border-b border-slate-100 flex flex-col gap-3">
       <div className="max-w-4xl mx-auto w-full flex items-center justify-between">
@@ -59,6 +60,14 @@ export default function Header({ tableNumber, isGuest, zoneName, searchQuery, se
               </div>
             </div>
           )}
+
+          <button 
+            onClick={onHistoryClick}
+            className="w-10 h-10 bg-orange-50 text-[#FF6B00] rounded-xl flex items-center justify-center hover:bg-orange-100 transition-colors active:scale-95 border border-orange-100"
+            title="Riwayat Pesanan"
+          >
+            <History size={18} />
+          </button>
 
           <button 
             onClick={onLogout}

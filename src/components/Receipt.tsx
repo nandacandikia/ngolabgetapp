@@ -7,20 +7,27 @@ import { submitOrderToBackend } from '../services/orderService';
 interface ReceiptProps {
   order: Order;
   onClose: () => void;
+  onUpdateOrder?: (updatedOrder: Order) => void;
 }
 
-export default function Receipt({ order, onClose }: ReceiptProps) {
+export default function Receipt({ order, onClose, onUpdateOrder }: ReceiptProps) {
   const [rating, setRating] = useState(0);
+  const [reviewText, setReviewText] = useState('');
   const [submittedRating, setSubmittedRating] = useState(false);
 
-  const handleRate = async (val: number) => {
-    setRating(val);
+  const handleSubmitReview = async () => {
+    if (rating === 0) return;
     setSubmittedRating(true);
-    await submitOrderToBackend({
+    const updatedOrder: Order = {
       ...order,
-      rating: val,
+      rating: rating,
+      review: reviewText,
       status: 'SELESAI'
-    });
+    };
+    await submitOrderToBackend(updatedOrder);
+    if (onUpdateOrder) {
+      onUpdateOrder(updatedOrder);
+    }
   };
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
@@ -116,7 +123,7 @@ export default function Receipt({ order, onClose }: ReceiptProps) {
             </p>
           </div>
 
-          {/* Rating Section for Admin Sync */}
+          {/* Rating & Review Section for Admin Sync */}
           <div className="pt-8 border-t border-slate-100 space-y-4">
             <p className="text-center font-bold text-slate-600 text-sm">Bagaimana layanan kami?</p>
             <div className="flex justify-center gap-2">
@@ -124,7 +131,7 @@ export default function Receipt({ order, onClose }: ReceiptProps) {
                 <button
                   key={star}
                   disabled={submittedRating}
-                  onClick={() => handleRate(star)}
+                  onClick={() => setRating(star)}
                   className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
                     rating >= star ? 'bg-yellow-400 text-white' : 'bg-slate-100 text-slate-300'
                   } active:scale-95`}
@@ -133,6 +140,32 @@ export default function Receipt({ order, onClose }: ReceiptProps) {
                 </button>
               ))}
             </div>
+
+            {rating > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-3"
+              >
+                <textarea
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  placeholder="Tulis ulasan Anda tentang makanan dan pelayanan kami..."
+                  disabled={submittedRating}
+                  className="w-full p-3 border border-slate-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#FF6B00] disabled:bg-slate-50 disabled:text-slate-400 resize-none h-20 transition-all"
+                />
+                
+                {!submittedRating && (
+                  <button
+                    onClick={handleSubmitReview}
+                    className="w-full bg-[#FF6B00] hover:bg-[#e66000] text-white py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg shadow-orange-500/25 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    Kirim Ulasan
+                  </button>
+                )}
+              </motion.div>
+            )}
+
             {submittedRating && (
               <p className="text-center text-[10px] text-green-500 font-bold uppercase tracking-widest mt-2 animate-bounce">
                 Terima kasih atas ulasan!

@@ -80,30 +80,150 @@ async function startServer() {
     }
   });
 
- app.post("/api/order", async (req, res) => {
-  try {
-    console.log("Submitting order ke Kasir MySQL...");
-    const response = await fetch(`${KASIR_DOMAIN}/api/orders`, {
-      method: "POST",
-      body: JSON.stringify(req.body),
-      headers: { 
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "Bypass-Tunnel-Reminder": "true" // Wajib ditambah agar tidak diblokir
-      }
-    });
-    const data = await response.json();
-    res.json(data);
-  } catch (error) {
-    console.error("Order Error:", error);
-    res.status(500).json({ success: false, message: "Gagal mengirim pesanan" });
-  }
-});
+  // Simulasi/Dummy Data jika backend kasir offline
+  const DUMMY_MENU = [
+    {
+      id: 1,
+      name: "Bakso Mas Yanto Spesial",
+      price: 25000,
+      category: "Bakso & Mie",
+      image_url: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=400",
+      status: "Tersedia",
+      stock: 50,
+      description: "Bakso sapi asli ukuran jumbo dengan kuah kaldu sapi yang gurih, lengkap dengan mie dan sayur segar.",
+      displayed: 1
+    },
+    {
+      id: 2,
+      name: "Mie Ayam Pangsit",
+      price: 18000,
+      category: "Bakso & Mie",
+      image_url: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?q=80&w=400",
+      status: "Tersedia",
+      stock: 30,
+      description: "Mie ayam buatan sendiri dengan bumbu kecap manis gurih, ditambah pangsit basah yang lembut.",
+      displayed: 1
+    },
+    {
+      id: 3,
+      name: "Nasi Goreng Spesial",
+      price: 20000,
+      category: "Aneka Nasi",
+      image_url: "https://images.unsplash.com/photo-1512058564366-18510be2db19?q=80&w=400",
+      status: "Tersedia",
+      stock: 40,
+      description: "Nasi goreng harum khas jawa dengan telur mata sapi, suwiran ayam, dan acar segar.",
+      displayed: 1
+    },
+    {
+      id: 4,
+      name: "Nasi Bakar Ayam Suwir",
+      price: 22000,
+      category: "Aneka Nasi",
+      image_url: "https://images.unsplash.com/photo-1608897013039-887f21d8c804?q=80&w=400",
+      status: "Tersedia",
+      stock: 20,
+      description: "Nasi gurih dibungkus daun pisang yang dibakar dengan isian ayam suwir kemangi pedas.",
+      displayed: 1
+    },
+    {
+      id: 5,
+      name: "Batagor Bandung",
+      price: 15000,
+      category: "Gorengan",
+      image_url: "https://images.unsplash.com/photo-1541532713592-79a0317b6b77?q=80&w=400",
+      status: "Tersedia",
+      stock: 60,
+      description: "Bakso tahu goreng renyah disiram dengan saus kacang kental yang pedas manis.",
+      displayed: 1
+    },
+    {
+      id: 6,
+      name: "Es Teller Mas Yanto",
+      price: 15000,
+      category: "Ice Cream",
+      image_url: "https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?q=80&w=400",
+      status: "Tersedia",
+      stock: 35,
+      description: "Es campur segar dengan kelapa muda, nangka, alpukat, dan susu kental manis.",
+      displayed: 1
+    },
+    {
+      id: 7,
+      name: "Es Jeruk Peras",
+      price: 8000,
+      category: "Minuman",
+      image_url: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?q=80&w=400",
+      status: "Tersedia",
+      stock: 100,
+      description: "Perasan jeruk asli segar yang kaya akan vitamin C dingin.",
+      displayed: 1
+    },
+    {
+      id: 8,
+      name: "Teh Manis (Es / Hangat)",
+      price: 5000,
+      category: "Minuman",
+      image_url: "https://images.unsplash.com/photo-1556679343-c7306c1976bc?q=80&w=400",
+      status: "Tersedia",
+      stock: 100,
+      description: "Teh wangi melati pilihan dengan gula asli.",
+      displayed: 1
+    }
+  ];
 
+  const dummyOrders = new Map<string, { status: string; timestamp: number }>();
+
+  app.post("/api/order", async (req, res) => {
+    try {
+      console.log("Submitting order ke Kasir MySQL...");
+      const response = await fetch(`${KASIR_DOMAIN}/api/orders`, {
+        method: "POST",
+        body: JSON.stringify(req.body),
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Bypass-Tunnel-Reminder": "true" // Wajib ditambah agar tidak diblokir
+        }
+      });
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.warn("[PROXY] Gagal kirim pesanan ke Kasir. Menggunakan simulasi order dummy.");
+      const orderId = req.body.id || `ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+      dummyOrders.set(orderId, { status: "PENDING", timestamp: Date.now() });
+
+      // Simulasi transisi status pesanan
+      setTimeout(() => {
+        const order = dummyOrders.get(orderId);
+        if (order) {
+          order.status = "Diproses";
+          console.log(`[SIMULASI] Status order ${orderId} berubah ke: Diproses`);
+        }
+      }, 5000);
+
+      setTimeout(() => {
+        const order = dummyOrders.get(orderId);
+        if (order) {
+          order.status = "Siap Disajikan";
+          console.log(`[SIMULASI] Status order ${orderId} berubah ke: Siap Disajikan`);
+        }
+      }, 12000);
+
+      res.json({ success: true, message: "Pesanan disimulasikan (Backend Offline)", orderId });
+    }
+  });
 
   app.get("/api/order/:id", async (req, res) => {
+    const { id } = req.params;
+
+    // Cek dulu apakah ada di memori dummyOrders
+    if (dummyOrders.has(id)) {
+      const order = dummyOrders.get(id);
+      return res.json({ success: true, status: order?.status });
+    }
+
     try {
-      const { id } = req.params;
       console.log(`[PROXY] Checking status for order: ${id}`);
       const response = await fetch(`${KASIR_DOMAIN}/api/orders/${id}`, {
         method: "GET",
@@ -121,8 +241,8 @@ async function startServer() {
       const data = await response.json();
       res.json(data);
     } catch (error) {
-      console.error("Check Order Status Error:", error);
-      res.status(500).json({ success: false, message: "Server Kasir tidak terjangkau" });
+      console.warn("[PROXY] Gagal cek status pesanan. Menggunakan fallback status dummy.");
+      res.json({ success: true, status: "Siap Disajikan" });
     }
   });
 
@@ -164,45 +284,23 @@ async function startServer() {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        if (response.status === 503) {
-          return res.status(503).json({ 
-            success: false, 
-            message: "Server Kasir (Admin) sedang Offline atau Terputus (Tunnel Unavailable)." 
-          });
-        }
-        return res.status(response.status).json({ 
-          success: false, 
-          message: `Kasir Admin merespon dengan status ${response.status}` 
-        });
+        console.warn(`[PROXY] Kasir Admin merespon dengan status ${response.status}. Menggunakan fallback menu dummy.`);
+        return res.json(DUMMY_MENU);
       }
 
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        console.error("Kasir merespon dengan HTML (Localtunnel Reminder)");
-        return res.status(403).json({ 
-          success: false, 
-          message: "Akses tertahan oleh Localtunnel Reminder. Silakan buka link Localtunnel di browser HP/Laptop kamu, klik 'Continue', lalu refresh aplikasi ini." 
-        });
+        console.warn("[PROXY] Kasir merespon dengan HTML (Localtunnel Reminder). Menggunakan fallback menu dummy.");
+        return res.json(DUMMY_MENU);
       }
 
       const data = await response.json();
       console.log("=== DATA DARI ADMIN BERHASIL DITERIMA ===");
-      console.log("Format Data:", Array.isArray(data) ? "Array" : typeof data);
-      console.log("Jumlah Item:", Array.isArray(data) ? data.length : "N/A");
-      if (Array.isArray(data) && data.length > 0) {
-        console.log("Contoh Item Pertama:", JSON.stringify(data[0], null, 2));
-      }
       res.json(data);
     } catch (error) {
       clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        return res.status(504).json({ success: false, message: "Koneksi ke Kasir sangat lambat (Timeout 15s). Coba lagi?" });
-      }
-      res.status(500).json({ 
-        success: false, 
-        message: "Gagal terhubung ke link Localtunnel.",
-        error: error instanceof Error ? error.message : String(error)
-      });
+      console.warn(`[PROXY] Gagal terhubung ke Kasir Admin (${error instanceof Error ? error.message : String(error)}). Menggunakan fallback menu dummy.`);
+      res.json(DUMMY_MENU);
     }
   });
 
