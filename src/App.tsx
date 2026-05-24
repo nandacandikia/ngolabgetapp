@@ -119,11 +119,11 @@ export default function App() {
         console.log("Data Berhasil di-load:", result);
         const rawItems = Array.isArray(result) ? result : (result.data || result.items || []);
         
-        // FILTER: Hanya ambil menu yang status displayed-nya tidak 0 / false (tidak disembunyikan oleh Admin)
-        const activeItems = rawItems.filter((item: any) => item.displayed !== 0 && item.displayed !== false && item.displayed !== '0');
+        // Tampilkan semua menu, termasuk yang dinonaktifkan (displayed = 0) tetapi dengan status Habis
+        const activeItems = rawItems;
         
         if (activeItems.length === 0) {
-          setMenuError(rawItems.length > 0 ? "Semua menu sedang dinonaktifkan/disembunyikan oleh Admin." : "Data menu di database admin masih kosong.");
+          setMenuError("Data menu di database admin masih kosong.");
         }
 
         const mappedMenu = activeItems.map((item: any) => {
@@ -146,8 +146,8 @@ export default function App() {
             image: item.image_url 
               ? (item.image_url.startsWith('http') ? item.image_url : `http://localhost:5000/${item.image_url.replace(/^\//, '')}`)
               : 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=400',
-            // Gunakan checking 'Tersedia' sesuai instruksi Admin
-            inStock: item.status === 'Tersedia' || Number(item.stock) > 0,
+            // Dinonaktifkan jika displayed === 0, false, atau '0'. Jika ditampilkan, gunakan check status/stok.
+            inStock: item.displayed !== 0 && item.displayed !== false && item.displayed !== '0' && (item.status === 'Tersedia' || Number(item.stock) > 0),
             stock: Number(item.stock || 0),
             description: item.description || '',
             isPromo: false,
