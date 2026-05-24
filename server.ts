@@ -20,63 +20,79 @@ async function startServer() {
 
   app.post("/api/register", async (req, res) => {
     try {
-      console.log("Registering user via GAS...");
-      const response = await fetch(`${APPS_SCRIPT_URL}?action=register`, {
+      console.log("Registering user via Kasir MySQL...");
+      const response = await fetch(`${KASIR_DOMAIN}/api/register`, {
         method: "POST",
         body: JSON.stringify(req.body),
         headers: { 
           "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        redirect: "follow"
+          "Accept": "application/json",
+          "Bypass-Tunnel-Reminder": "true"
+        }
       });
       
-      const text = await response.text();
-      try {
-        const data = JSON.parse(text);
-        res.json(data);
-      } catch (e) {
-        console.error("GAS Register Response not JSON:", text);
-        const isHtml = text.trim().startsWith("<");
-        const errorMessage = isHtml 
-          ? "Database mengembalikan halaman HTML. Pastikan App Script sudah di-deploy dengan akses 'Anyone'."
-          : `Format tidak valid: ${text.substring(0, 100)}`;
-        res.status(500).json({ success: false, message: errorMessage });
-      }
+      const data = await response.json();
+      res.json(data);
     } catch (error) {
       console.error("Register Error:", error);
-      res.status(500).json({ success: false, message: "Gagal menghubungkan ke database Google Sheets" });
+      res.status(500).json({ success: false, message: "Gagal menghubungkan ke database Kasir MySQL" });
     }
   });
 
   app.post("/api/login", async (req, res) => {
     try {
-      console.log("Logging in user via GAS...");
-      const response = await fetch(`${APPS_SCRIPT_URL}?action=login`, {
+      console.log("Logging in user via Kasir MySQL...");
+      const response = await fetch(`${KASIR_DOMAIN}/api/login`, {
         method: "POST",
         body: JSON.stringify(req.body),
         headers: { 
           "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        redirect: "follow"
+          "Accept": "application/json",
+          "Bypass-Tunnel-Reminder": "true"
+        }
       });
       
-      const text = await response.text();
-      try {
-        const data = JSON.parse(text);
-        res.json(data);
-      } catch (e) {
-        console.error("GAS Login Response not JSON:", text);
-        const isHtml = text.trim().startsWith("<");
-        const errorMessage = isHtml 
-          ? "Database mengembalikan halaman HTML. Pastikan App Script sudah di-deploy dengan akses 'Anyone'."
-          : `Format tidak valid: ${text.substring(0, 100)}`;
-        res.status(500).json({ success: false, message: errorMessage });
-      }
+      const data = await response.json();
+      res.json(data);
     } catch (error) {
       console.error("Login Error:", error);
-      res.status(500).json({ success: false, message: "Gagal menghubungkan ke database Google Sheets" });
+      res.status(500).json({ success: false, message: "Gagal menghubungkan ke database Kasir MySQL" });
+    }
+  });
+
+  app.get("/api/ratings", async (req, res) => {
+    try {
+      const response = await fetch(`${KASIR_DOMAIN}/api/ratings`, {
+        method: "GET",
+        headers: { 
+          "Accept": "application/json",
+          "Bypass-Tunnel-Reminder": "true"
+        }
+      });
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Get Ratings Error:", error);
+      res.status(500).json({ success: false, message: "Gagal mengambil data ulasan" });
+    }
+  });
+
+  app.post("/api/ratings", async (req, res) => {
+    try {
+      const response = await fetch(`${KASIR_DOMAIN}/api/ratings`, {
+        method: "POST",
+        body: JSON.stringify(req.body),
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Bypass-Tunnel-Reminder": "true"
+        }
+      });
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Submit Rating Error:", error);
+      res.status(500).json({ success: false, message: "Gagal menghubungkan ke database Kasir MySQL" });
     }
   });
 

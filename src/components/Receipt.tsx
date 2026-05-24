@@ -25,6 +25,28 @@ export default function Receipt({ order, onClose, onUpdateOrder }: ReceiptProps)
       status: 'SELESAI'
     };
     await submitOrderToBackend(updatedOrder);
+
+    // Kirim rating untuk masing-masing menu item ke /api/ratings
+    for (const item of order.items) {
+      try {
+        await fetch('/api/ratings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            customerName: order.customerName || `Meja ${order.tableNumber}`,
+            rating: rating,
+            comment: reviewText,
+            orderId: order.id,
+            menuId: item.id
+          })
+        });
+      } catch (err) {
+        console.error(`Gagal mengirim ulasan untuk menu ${item.name}:`, err);
+      }
+    }
+
     if (onUpdateOrder) {
       onUpdateOrder(updatedOrder);
     }
