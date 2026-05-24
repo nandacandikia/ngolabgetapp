@@ -12,6 +12,7 @@ import LoginView from './components/LoginView';
 import RegisterView from './components/RegisterView';
 import PointsModal from './components/PointsModal';
 import OrderHistoryModal from './components/OrderHistoryModal';
+import ProfileModal from './components/ProfileModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { submitScanTracking } from './services/orderService';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -44,9 +45,18 @@ export default function App() {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [selectedItemForNote, setSelectedItemForNote] = useState<MenuItem | null>(null);
   const [completedOrder, setCompletedOrder] = useState<Order | null>(null);
+  const [isNewOrder, setIsNewOrder] = useState<boolean>(false);
   const [showStatus, setShowStatus] = useState(false);
   const [isRinging, setIsRinging] = useState(false);
   const [isPointsModalOpen, setIsPointsModalOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('maslahat_user') || 'null');
+    } catch (e) {
+      return null;
+    }
+  });
   const [points, setPoints] = useState<number>(() => {
     return parseInt(localStorage.getItem('maslahat_points') || '0');
   });
@@ -171,7 +181,7 @@ export default function App() {
     fetchMenu();
   }, []);
 
-  const handleAuth = (type: 'guest' | 'login' | 'table_scan') => {
+  const handleAuth = (type: 'guest' | 'login' | 'table_scan', userData?: any) => {
     if (type === 'login' || type === 'table_scan') {
       setIsAuthenticated(true);
       setIsGuest(false);
@@ -179,6 +189,10 @@ export default function App() {
       localStorage.setItem('maslahat_role', type === 'table_scan' ? 'table' : 'user');
       localStorage.removeItem('maslahat_table');
       setTableNumber('Belum Scan');
+      if (userData) {
+        setCurrentUser(userData);
+        localStorage.setItem('maslahat_user', JSON.stringify(userData));
+      }
     } else {
       setIsAuthenticated(true);
       setIsGuest(true);
@@ -186,6 +200,8 @@ export default function App() {
       localStorage.setItem('maslahat_auth', 'true');
       localStorage.setItem('maslahat_role', 'guest');
       localStorage.removeItem('maslahat_table');
+      setCurrentUser(null);
+      localStorage.removeItem('maslahat_user');
     }
     setAuthView('welcome');
   };
@@ -407,6 +423,7 @@ export default function App() {
       }
 
       setCompletedOrder(newOrder);
+      setIsNewOrder(true);
       setOrderHistory((prev) => {
         const next = [newOrder, ...prev];
         localStorage.setItem('maslahat_order_history', JSON.stringify(next));
@@ -430,12 +447,20 @@ export default function App() {
     localStorage.removeItem('maslahat_role');
     localStorage.removeItem('maslahat_table');
     localStorage.removeItem('maslahat_zone');
+    localStorage.removeItem('maslahat_user');
+    setCurrentUser(null);
     setZoneName('');
   };
 
   // POLLING STATUS PESANAN & FITUR DERING
   useEffect(() => {
-    if (!completedOrder) return;
+    if (!completedOrder || !isNewOrder) return;
+
+    // Jika status pesanan sudah final, tidak perlu polling lagi
+    const isFinalStatus = completedOrder.status === 'SELESAI' || 
+                          completedOrder.status === 'Siap Disajikan' || 
+                          completedOrder.status === 'DIBATALKAN';
+    if (isFinalStatus) return;
 
     // Audio kring restoran yang khas dan renyah
     const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/995/995-preview.mp3');
@@ -461,10 +486,21 @@ export default function App() {
 
             // Auto stop ringing setelah 15 detik
             setTimeout(() => setIsRinging(false), 15000);
+
+            // Nonaktifkan isNewOrder agar polling berhenti karena status telah selesai
+            setIsNewOrder(false);
           }
 
           if (newStatus !== completedOrder.status) {
-            setCompletedOrder(prev => prev ? { ...prev, status: newStatus } : null);
+            const updated = { ...completedOrder, status: newStatus as any };
+            setCompletedOrder(updated);
+            
+            // Perbarui juga data di riwayat pesanan (localStorage) agar sinkron
+            setOrderHistory((prev) => {
+              const next = prev.map((o) => (o.id === updated.id ? updated : o));
+              localStorage.setItem('maslahat_order_history', JSON.stringify(next));
+              return next;
+            });
           }
         }
       } catch (err) {
@@ -477,7 +513,7 @@ export default function App() {
       clearInterval(interval);
       audio.pause();
     };
-  }, [completedOrder?.id, completedOrder?.status]);
+  }, [completedOrder?.id, completedOrder?.status, isNewOrder]);
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900 pb-32">
@@ -495,7 +531,7 @@ export default function App() {
               <LoginView 
                 onBack={() => setAuthView('welcome')} 
                 onSuccess={(user) => {
-                  handleAuth('login');
+                  handleAuth('login', user);
                 }} 
               />
             )}
@@ -567,6 +603,7 @@ export default function App() {
         onPointsClick={() => setIsPointsModalOpen(true)}
         onLogout={handleLogout}
         onHistoryClick={() => setIsHistoryOpen(true)}
+        onProfileClick={() => setIsProfileOpen(true)}
       />
 
       <PointsModal 
@@ -591,7 +628,7 @@ export default function App() {
             </div>
             <div className="text-left pr-2">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Status Pesanan</p>
-              <p className="text-xs font-bold text-slate-700">{completedOrder.status === 'PENDING' ? 'Menunggu Konfirmasi' : completedOrder.status}</p>
+              <p className="text-xs font-bold text-slate-700">{(completedOrder.status === 'PENDING' || completedOrder.status === 'Menunggu') ? 'Menunggu Verifikasi' : completedOrder.status}</p>
             </div>
           </motion.button>
         )}
@@ -905,9 +942,20 @@ export default function App() {
         orders={orderHistory}
         onViewReceipt={(order) => {
           setCompletedOrder(order);
+          setIsNewOrder(false);
           setShowStatus(true);
           setIsHistoryOpen(false);
         }}
+      />
+
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        user={currentUser}
+        points={points}
+        onPointsClick={() => setIsPointsModalOpen(true)}
+        onHistoryClick={() => setIsHistoryOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Modal Popup Notifikasi Kring Restoran */}

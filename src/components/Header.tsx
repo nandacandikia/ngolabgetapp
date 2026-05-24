@@ -1,5 +1,4 @@
-import React from 'react';
-import { MapPin, Search, Star, LogOut, History } from 'lucide-react';
+import { MapPin, Search, Star, LogOut, History, User } from 'lucide-react';
 
 interface HeaderProps {
   tableNumber: string;
@@ -11,9 +10,10 @@ interface HeaderProps {
   onPointsClick: () => void;
   onLogout: () => void;
   onHistoryClick: () => void;
+  onProfileClick: () => void;
 }
 
-export default function Header({ tableNumber, isGuest, zoneName, searchQuery, setSearchQuery, points, onPointsClick, onLogout, onHistoryClick }: HeaderProps) {
+export default function Header({ tableNumber, isGuest, zoneName, searchQuery, setSearchQuery, points, onPointsClick, onLogout, onHistoryClick, onProfileClick }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-3 border-b border-slate-100 flex flex-col gap-3">
       <div className="max-w-4xl mx-auto w-full flex items-center justify-between">
@@ -59,6 +59,16 @@ export default function Header({ tableNumber, isGuest, zoneName, searchQuery, se
                 </p>
               </div>
             </div>
+          )}
+
+          {!isGuest && (
+            <button 
+              onClick={onProfileClick}
+              className="w-10 h-10 bg-slate-50 text-slate-600 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-colors active:scale-95 border border-slate-200"
+              title="Profil Saya"
+            >
+              <User size={18} />
+            </button>
           )}
 
           <button 
