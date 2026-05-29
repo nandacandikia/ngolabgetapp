@@ -154,7 +154,7 @@ export default function App() {
             price: Number(item.price || 0),
             category,
             image: item.image_url 
-              ? (item.image_url.startsWith('http') ? item.image_url : `http://localhost:5000/${item.image_url.replace(/^\//, '')}`)
+              ? (item.image_url.startsWith('http') ? item.image_url : `http://${window.location.hostname}:5000/${item.image_url.replace(/^\//, '')}`)
               : 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=400',
             // Dinonaktifkan jika displayed === 0, false, atau '0'. Jika ditampilkan, gunakan check status/stok.
             inStock: item.displayed !== 0 && item.displayed !== false && item.displayed !== '0' && (item.status === 'Tersedia' || Number(item.stock) > 0),
