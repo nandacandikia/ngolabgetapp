@@ -1,4 +1,4 @@
-import { MapPin, Search, Star, LogOut, History, User } from 'lucide-react';
+import { MapPin, Search, Star, LogOut, History, User, Gamepad2 } from 'lucide-react';
 
 interface HeaderProps {
   tableNumber: string;
@@ -11,9 +11,10 @@ interface HeaderProps {
   onLogout: () => void;
   onHistoryClick: () => void;
   onProfileClick: () => void;
+  onPlayGame?: () => void;
 }
 
-export default function Header({ tableNumber, isGuest, zoneName, searchQuery, setSearchQuery, points, onPointsClick, onLogout, onHistoryClick, onProfileClick }: HeaderProps) {
+export default function Header({ tableNumber, isGuest, zoneName, searchQuery, setSearchQuery, points, onPointsClick, onLogout, onHistoryClick, onProfileClick, onPlayGame }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-3 border-b border-slate-100 flex flex-col gap-3">
       <div className="max-w-4xl mx-auto w-full flex items-center justify-between">
@@ -59,6 +60,22 @@ export default function Header({ tableNumber, isGuest, zoneName, searchQuery, se
                 </p>
               </div>
             </div>
+          )}
+
+          {onPlayGame && (
+            <button 
+              onClick={onPlayGame}
+              className="bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-[15px] flex items-center gap-2 hover:bg-indigo-100 transition-colors cursor-pointer active:scale-95"
+              title="Main Game"
+            >
+              <div className="bg-indigo-500 p-1 rounded-full text-white">
+                <Gamepad2 size={10} strokeWidth={3} />
+              </div>
+              <div className="text-left hidden sm:block">
+                <p className="text-[8px] text-indigo-400 font-black uppercase leading-none">Main Game</p>
+                <p className="font-bold text-[11px] text-indigo-700 leading-tight">Dapat Poin</p>
+              </div>
+            </button>
           )}
 
           {!isGuest && (

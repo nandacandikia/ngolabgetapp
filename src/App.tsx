@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ShoppingBag, Clock, LogIn, Bell, Sparkles, QrCode, X } from 'lucide-react';
-import { MenuItem, CartItem, Category, Order, PaymentMethod } from './types';
+import { MenuItem, CartItem, Category, Order, PaymentMethod, Voucher, MyVoucher } from './types';
 import Header from './components/Header';
 import CategoryFilter from './components/CategoryFilter';
 import MenuCard from './components/MenuCard';
@@ -13,6 +13,7 @@ import RegisterView from './components/RegisterView';
 import PointsModal from './components/PointsModal';
 import OrderHistoryModal from './components/OrderHistoryModal';
 import ProfileModal from './components/ProfileModal';
+import GameScreen from './components/GameScreen';
 import { motion, AnimatePresence } from 'motion/react';
 import { submitScanTracking } from './services/orderService';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -49,7 +50,12 @@ export default function App() {
   const [showStatus, setShowStatus] = useState(false);
   const [isRinging, setIsRinging] = useState(false);
   const [isPointsModalOpen, setIsPointsModalOpen] = useState(false);
+  const [points, setPoints] = useState<number>(() => {
+    const saved = localStorage.getItem('maslahat_points');
+    return saved ? parseInt(saved) : 1000;
+  });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isGameOpen, setIsGameOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(() => {
     try {
       return JSON.parse(localStorage.getItem('maslahat_user') || 'null');
@@ -57,9 +63,14 @@ export default function App() {
       return null;
     }
   });
-  const [points, setPoints] = useState<number>(() => {
-    return parseInt(localStorage.getItem('maslahat_points') || '0');
+  const [myVouchers, setMyVouchers] = useState<MyVoucher[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('maslahat_my_vouchers') || '[]');
+    } catch {
+      return [];
+    }
   });
+  const [appliedVoucher, setAppliedVoucher] = useState<MyVoucher | null>(null);
 
   const [showScanner, setShowScanner] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
@@ -105,14 +116,14 @@ export default function App() {
     const fetchMenu = async () => {
       setIsLoadingMenu(true);
       setMenuError(null);
-      
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 detik di frontend
 
       try {
         const response = await fetch('/api/menu', { signal: controller.signal });
         clearTimeout(timeoutId);
-        
+
         let result;
         const text = await response.text();
         try {
@@ -123,15 +134,15 @@ export default function App() {
         }
 
         if (!response.ok) {
-           throw new Error(result.message || `Error ${response.status}`);
+          throw new Error(result.message || `Error ${response.status}`);
         }
-        
+
         console.log("Data Berhasil di-load:", result);
         const rawItems = Array.isArray(result) ? result : (result.data || result.items || []);
-        
+
         // Tampilkan semua menu, termasuk yang dinonaktifkan (displayed = 0) tetapi dengan status Habis
         const activeItems = rawItems;
-        
+
         if (activeItems.length === 0) {
           setMenuError("Data menu di database admin masih kosong.");
         }
@@ -139,7 +150,7 @@ export default function App() {
         const mappedMenu = activeItems.map((item: any) => {
           // Normalisasi Kategori agar cocok dengan Tab UI
           let category = item.category || 'Bakso & Mie';
-          
+
           // Mapping sederhana jika kategori di database berbeda bahasa atau singkatan
           const cat = category.toString().toLowerCase();
           if (cat.includes('mie') || cat.includes('bakso')) category = 'Bakso & Mie';
@@ -149,11 +160,11 @@ export default function App() {
           else if (cat.includes('minum')) category = 'Minuman';
 
           return {
-            id: String(item.id || Math.random()), 
+            id: String(item.id || Math.random()),
             name: item.name || 'Produk Tanpa Nama',
             price: Number(item.price || 0),
             category,
-            image: item.image_url 
+            image: item.image_url
               ? (item.image_url.startsWith('http') ? item.image_url : `http://localhost:5000/${item.image_url.replace(/^\//, '')}`)
               : 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=400',
             // Dinonaktifkan jika displayed === 0, false, atau '0'. Jika ditampilkan, gunakan check status/stok.
@@ -164,7 +175,7 @@ export default function App() {
             discountPrice: undefined
           };
         });
-          
+
         setMenuData(mappedMenu);
       } catch (error) {
         clearTimeout(timeoutId);
@@ -221,7 +232,7 @@ export default function App() {
       setTableNumber(meja);
       submitScanTracking(meja);
       localStorage.setItem('maslahat_table', meja);
-      
+
       const parsedZone = zona ? decodeURIComponent(zona) : '';
       if (parsedZone) {
         setZoneName(parsedZone);
@@ -248,7 +259,7 @@ export default function App() {
             localStorage.removeItem('maslahat_zone');
           });
       }
-      
+
       if (role === 'guest') {
         setIsGuest(true);
         setIsAuthenticated(true);
@@ -274,10 +285,10 @@ export default function App() {
 
   useEffect(() => {
     let html5QrCode: Html5Qrcode | null = null;
-    
+
     if (showScanner) {
       html5QrCode = new Html5Qrcode("qr-reader");
-      
+
       const startScanner = async () => {
         try {
           await html5QrCode?.start(
@@ -288,7 +299,7 @@ export default function App() {
             },
             (decodedText: string) => {
               setScanResult(decodedText);
-              
+
               // Handle result
               if (decodedText.includes('meja=')) {
                 const url = new URL(decodedText.startsWith('http') ? decodedText : `http://dummy.com/${decodedText}`);
@@ -304,7 +315,7 @@ export default function App() {
                 window.location.href = `/?meja=${decodedText.trim()}&role=guest`;
                 return;
               }
-              
+
               // If not a table URL/number, stop after a delay
               setTimeout(() => {
                 setShowScanner(false);
@@ -368,10 +379,26 @@ export default function App() {
     setIsPaymentOpen(true);
   };
 
+  const handlePlayGame = () => {
+    setIsCartOpen(false);
+    setIsGameOpen(true);
+  };
+
+  const handleGameComplete = (pointsEarned: number) => {
+    if (!isGuest) {
+      const newPoints = points + pointsEarned;
+      setPoints(newPoints);
+      localStorage.setItem('maslahat_points', newPoints.toString());
+      alert(`Selamat! Anda mendapatkan ${pointsEarned} poin dari permainan!`);
+    } else {
+      alert(`Anda mendapatkan ${pointsEarned} poin! Silakan login untuk menyimpan poin Anda di lain waktu.`);
+    }
+  };
+
   const handleConfirmPayment = async (method: PaymentMethod, customerName: string) => {
     const pointsEarned = isGuest ? 0 : cart.reduce((sum, item) => sum + item.quantity, 0);
     const finalCustomerName = customerName || "Pelanggan App";
-    
+
     const newOrder: Order = {
       id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
       items: [...cart],
@@ -391,7 +418,7 @@ export default function App() {
         const base = /^\d+$/.test(tableNumber) ? `Meja ${tableNumber}` : tableNumber;
         return zoneName && zoneName !== 'Area Meja' ? `${base} (${zoneName})` : base;
       })(),
-      customer: finalCustomerName, 
+      customer: finalCustomerName,
       type: "Dine In",
       paymentMethod: method,
       amountPaid: cartTotal,
@@ -402,7 +429,7 @@ export default function App() {
         name: item.name,
         price: item.price,
         quantity: item.quantity,
-        note: item.note || "" 
+        note: item.note || ""
       }))
     };
 
@@ -410,12 +437,12 @@ export default function App() {
       // Tembak Data Pesanan LANGSUNG ke Sistem Admin via Localtunnel
       await fetch('/api/order', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(orderDataKasir)
       });
-      
+
       if (!isGuest) {
         const newPoints = points + pointsEarned;
         setPoints(newPoints);
@@ -457,27 +484,27 @@ export default function App() {
     if (!completedOrder || !isNewOrder) return;
 
     // Jika status pesanan sudah final, tidak perlu polling lagi
-    const isFinalStatus = completedOrder.status === 'SELESAI' || 
-                          completedOrder.status === 'Siap Disajikan' || 
-                          completedOrder.status === 'DIBATALKAN';
+    const isFinalStatus = completedOrder.status === 'SELESAI' ||
+      completedOrder.status === 'Siap Disajikan' ||
+      completedOrder.status === 'DIBATALKAN';
     if (isFinalStatus) return;
 
     // Audio kring restoran yang khas dan renyah
     const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/995/995-preview.mp3');
-    
+
     const checkStatus = async () => {
       try {
         const response = await fetch(`/api/order/${completedOrder.id}`);
         if (response.ok) {
           const data = await response.json();
           const newStatus = data.status || data.order_status || completedOrder.status;
-          
+
           const isFinished = newStatus === 'Siap Disajikan' || newStatus === 'Selesai' || newStatus.toLowerCase().includes('antar') || newStatus === 'SELESAI';
-          
+
           if (isFinished && completedOrder.status !== newStatus) {
             setIsRinging(true);
             audio.play().catch(e => console.log("Gagal putar suara (Butuh interaksi user):", e));
-            
+
             // Putar kedua kali setelah 1.5 detik agar dering kring lebih berasa
             setTimeout(() => {
               audio.currentTime = 0;
@@ -494,7 +521,7 @@ export default function App() {
           if (newStatus !== completedOrder.status) {
             const updated = { ...completedOrder, status: newStatus as any };
             setCompletedOrder(updated);
-            
+
             // Perbarui juga data di riwayat pesanan (localStorage) agar sinkron
             setOrderHistory((prev) => {
               const next = prev.map((o) => (o.id === updated.id ? updated : o));
@@ -521,24 +548,24 @@ export default function App() {
         {!isAuthenticated && (
           <>
             {authView === 'welcome' && (
-              <WelcomeScreen 
-                onLogin={() => setAuthView('login')} 
+              <WelcomeScreen
+                onLogin={() => setAuthView('login')}
                 onRegister={() => setAuthView('register')}
-                onGuest={() => handleAuth('guest')} 
+                onGuest={() => handleAuth('guest')}
               />
             )}
             {authView === 'login' && (
-              <LoginView 
-                onBack={() => setAuthView('welcome')} 
+              <LoginView
+                onBack={() => setAuthView('welcome')}
                 onSuccess={(user) => {
                   handleAuth('login', user);
-                }} 
+                }}
               />
             )}
             {authView === 'register' && (
-              <RegisterView 
-                onBack={() => setAuthView('welcome')} 
-                onSuccess={() => setAuthView('login')} 
+              <RegisterView
+                onBack={() => setAuthView('welcome')}
+                onSuccess={() => setAuthView('login')}
               />
             )}
           </>
@@ -555,7 +582,7 @@ export default function App() {
             className="fixed inset-0 z-[110] flex flex-col items-center justify-center p-6 bg-orange-600/90 text-white text-center"
           >
             <motion.div
-              animate={{ 
+              animate={{
                 scale: [1, 1.2, 1],
                 rotate: [0, 10, -10, 10, -10, 0]
               }}
@@ -566,7 +593,7 @@ export default function App() {
                 <ShoppingBag size={64} className="animate-bounce" />
               </div>
             </motion.div>
-            
+
             <h2 className="text-4xl font-black mb-4">PESANAN DI ANTAR!</h2>
             <p className="text-xl font-bold opacity-90 max-w-md">
               Pesanan kamu sudah dalam perjalanan ke {(() => {
@@ -574,45 +601,68 @@ export default function App() {
                 return zoneName && zoneName !== 'Area Meja' ? `${base} (${zoneName})` : base;
               })()}. Siap-siap ya!
             </p>
-            
-            <button 
+
+            <button
               onClick={() => setIsRinging(false)}
               className="mt-12 bg-white text-orange-600 px-12 py-5 rounded-full font-black text-xl shadow-2xl active:scale-95 transition-all"
             >
               OKE, SAYA TUNGGU!
             </button>
-            
+
             <div className="absolute inset-0 -z-10 overflow-hidden">
-               <motion.div 
-                 animate={{ opacity: [0.1, 0.3, 0.1] }}
-                 transition={{ repeat: Infinity, duration: 2 }}
-                 className="absolute inset-0 bg-white"
-               />
+              <motion.div
+                animate={{ opacity: [0.1, 0.3, 0.1] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+                className="absolute inset-0 bg-white"
+              />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <Header 
-        tableNumber={tableNumber} 
+      <Header
+        tableNumber={tableNumber}
         isGuest={isGuest}
         zoneName={zoneName}
-        searchQuery={searchQuery} 
-        setSearchQuery={setSearchQuery} 
-        points={points} 
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        points={points}
         onPointsClick={() => setIsPointsModalOpen(true)}
         onLogout={handleLogout}
         onHistoryClick={() => setIsHistoryOpen(true)}
         onProfileClick={() => setIsProfileOpen(true)}
+        onPlayGame={handlePlayGame}
       />
 
-      <PointsModal 
+      <PointsModal
         isOpen={isPointsModalOpen}
         onClose={() => setIsPointsModalOpen(false)}
         points={points}
         onClaim={handleClaimPoints}
+        myVouchers={myVouchers}
+        setMyVouchers={setMyVouchers}
       />
-      
+      <PaymentModal
+        isOpen={isPaymentOpen}
+        onClose={() => setIsPaymentOpen(false)}
+        total={cartTotal}
+        onConfirm={(method, customerName) => {
+          // Mark applied voucher as used
+          if (appliedVoucher) {
+            const updated = myVouchers.map(v =>
+              v.code === appliedVoucher.code ? { ...v, used: true } : v
+            );
+            setMyVouchers(updated);
+            localStorage.setItem('maslahat_my_vouchers', JSON.stringify(updated));
+            setAppliedVoucher(null);
+          }
+          handleConfirmPayment(method, customerName);
+        }}
+        myVouchers={myVouchers}
+        appliedVoucher={appliedVoucher}
+        setAppliedVoucher={setAppliedVoucher}
+      />
+
       {/* Floating Order Status Tracker */}
       <AnimatePresence>
         {completedOrder && !showStatus && (
@@ -645,19 +695,19 @@ export default function App() {
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -z-10" />
 
             <div className="relative w-36 h-36 mb-8 flex items-center justify-center">
-              <motion.div 
+              <motion.div
                 animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
                 transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
                 className="bg-gradient-to-tr from-orange-500 to-amber-500 text-white p-7 rounded-[32px] shadow-lg shadow-orange-500/25 relative z-10"
               >
                 <QrCode size={56} strokeWidth={1.5} />
               </motion.div>
-              <motion.div 
+              <motion.div
                 animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0, 0.3] }}
                 transition={{ repeat: Infinity, duration: 2, ease: "easeOut" }}
                 className="absolute inset-0 border-2 border-orange-500/30 rounded-[44px]"
               />
-              <motion.div 
+              <motion.div
                 animate={{ scale: [1, 1.7, 1], opacity: [0.15, 0, 0.15] }}
                 transition={{ repeat: Infinity, duration: 2, delay: 0.5, ease: "easeOut" }}
                 className="absolute inset-0 border border-orange-500/20 rounded-[56px]"
@@ -682,7 +732,7 @@ export default function App() {
               <QrCode size={18} />
               Scan QR Code Sekarang
             </button>
-            
+
             <p className="mt-8 text-xs text-slate-400 font-semibold flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Sistem Pemesanan Mandiri Maslahat
@@ -748,12 +798,12 @@ export default function App() {
                   {menuData.length === 0 ? (menuError || "Menu tidak ditemukan di database") : "Menu tidak ditemukan"}
                 </p>
                 {menuData.length === 0 && (
-                   <button 
+                  <button
                     onClick={() => window.location.reload()}
                     className="mt-4 text-[#FF6B00] font-bold underline"
-                   >
-                     Coba Lagi
-                   </button>
+                  >
+                    Coba Lagi
+                  </button>
                 )}
               </div>
             )}
@@ -777,7 +827,7 @@ export default function App() {
               <div className="flex items-center gap-4 relative z-10">
                 <div className="bg-white/20 p-2.5 rounded-2xl relative">
                   <ShoppingBag size={20} />
-                  <motion.span 
+                  <motion.span
                     initial={{ scale: 0.5 }}
                     animate={{ scale: 1 }}
                     key={cart.length}
@@ -791,14 +841,14 @@ export default function App() {
                   <p className="font-black text-xl italic tracking-tight">Rp {cartTotal.toLocaleString('id-ID')}</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2 relative z-10">
                 <div className="bg-white/10 px-4 py-2 rounded-xl backdrop-blur-sm border border-white/10 group-hover:bg-white/20 transition-colors">
                   <span className="font-black text-sm uppercase tracking-widest">Lihat</span>
                 </div>
               </div>
 
-              <motion.div 
+              <motion.div
                 animate={{ x: ['-100%', '200%'] }}
                 transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
                 className="absolute top-0 w-32 h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12"
@@ -817,16 +867,9 @@ export default function App() {
         selectedItemForNote={selectedItemForNote}
         setSelectedItemForNote={setSelectedItemForNote}
         addToCartWithNote={addToCartWithNote}
+        onPlayGame={handlePlayGame}
       />
 
-      <PaymentModal
-        isOpen={isPaymentOpen}
-        onClose={() => setIsPaymentOpen(false)}
-        total={cartTotal}
-        onConfirm={handleConfirmPayment}
-      />
-
-      {/* Guest Login Prompt Modal */}
       <AnimatePresence>
         {showLoginPrompt && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -893,7 +936,7 @@ export default function App() {
               exit={{ scale: 0.9, opacity: 0 }}
               className="w-full max-w-md bg-white rounded-[40px] p-8 space-y-6 overflow-hidden relative z-10"
             >
-              <button 
+              <button
                 onClick={() => setShowScanner(false)}
                 className="absolute top-6 right-6 p-2 bg-slate-100 rounded-full text-slate-500 hover:bg-slate-200 transition-colors"
               >
@@ -929,9 +972,9 @@ export default function App() {
       </AnimatePresence>
 
       {completedOrder && showStatus && (
-        <Receipt 
-          order={completedOrder} 
-          onClose={() => setShowStatus(false)} 
+        <Receipt
+          order={completedOrder}
+          onClose={() => setShowStatus(false)}
           onUpdateOrder={handleUpdateOrder}
         />
       )}
@@ -970,7 +1013,7 @@ export default function App() {
             />
             <motion.div
               initial={{ scale: 0.8, y: 50 }}
-              animate={{ 
+              animate={{
                 scale: [1, 1.05, 1, 1.05, 1],
                 rotate: [0, -3, 3, -3, 3, 0],
               }}
@@ -1005,6 +1048,16 @@ export default function App() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isGameOpen && (
+          <GameScreen
+            onClose={() => setIsGameOpen(false)}
+            onGameComplete={handleGameComplete}
+            userId={currentUser?.id || (isGuest ? 'GUEST' : null)}
+          />
         )}
       </AnimatePresence>
     </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Minus, MessageSquare, ShoppingBag, Trash2, ArrowRight } from 'lucide-react';
+import { X, Plus, Minus, MessageSquare, ShoppingBag, Trash2, ArrowRight, Gamepad2 } from 'lucide-react';
 import { CartItem, MenuItem } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -12,6 +12,7 @@ interface CartModalProps {
   selectedItemForNote: MenuItem | null;
   setSelectedItemForNote: (item: MenuItem | null) => void;
   addToCartWithNote: (item: MenuItem, note: string) => void;
+  onPlayGame?: () => void;
 }
 
 export default function CartModal({
@@ -22,7 +23,8 @@ export default function CartModal({
   onCheckout,
   selectedItemForNote,
   setSelectedItemForNote,
-  addToCartWithNote
+  addToCartWithNote,
+  onPlayGame
 }: CartModalProps) {
   const [note, setNote] = useState('');
 
@@ -232,6 +234,8 @@ export default function CartModal({
                     </div>
                   </div>
                   
+
+
                   <button
                     onClick={onCheckout}
                     className="w-full bg-[#FF6B00] text-white py-5 rounded-[32px] font-black text-lg hover:bg-[#e66000] transition-all shadow-2xl shadow-orange-200 active:scale-[0.98] flex items-center justify-center gap-3 relative overflow-hidden group"

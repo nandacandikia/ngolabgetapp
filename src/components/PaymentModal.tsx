@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { X, QrCode, Wallet, CreditCard, CheckCircle2, ChevronRight, Copy, Landmark, Banknote, Upload, Image as ImageIcon, Trash2 } from 'lucide-react';
-import { PaymentMethod } from '../types';
+import { X, QrCode, Wallet, CreditCard, CheckCircle2, ChevronRight, Copy, Landmark, Banknote, Upload, Image as ImageIcon, Trash2, Ticket } from 'lucide-react';
+import { PaymentMethod, MyVoucher } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface PaymentModalProps {
@@ -8,54 +8,54 @@ interface PaymentModalProps {
   onClose: () => void;
   total: number;
   onConfirm: (method: PaymentMethod, customerName: string) => void;
+  myVouchers: MyVoucher[];
+  appliedVoucher: MyVoucher | null;
+  setAppliedVoucher: React.Dispatch<React.SetStateAction<MyVoucher | null>>;
 }
 
 const METHOD_DETAILS: Record<string, { label: string; icon: any; color: string; detail: string; subDetail: string }> = {
-  'QRIS': { label: 'QRIS / Semua Bank', icon: QrCode, color: 'text-indigo-600', detail: 'Scan QR Code', subDetail: 'OVO, Dana, GoPay, LinkAja, BCA Mobile' },
-  'GoPay': { label: 'GoPay', icon: Wallet, color: 'text-emerald-500', detail: '0812-3456-7890', subDetail: 'A/N Ngolab' },
-  'OVO': { label: 'OVO', icon: CreditCard, color: 'text-purple-600', detail: '0812-3456-7890', subDetail: 'A/N Ngolab' },
-  'Dana': { label: 'Dana', icon: Wallet, color: 'text-blue-500', detail: '0812-3456-7890', subDetail: 'A/N Ngolab' },
-  'BCA': { label: 'Transfer BCA', icon: Landmark, color: 'text-blue-700', detail: '1234567890', subDetail: 'A/N Ngolab' },
-  'Mandiri': { label: 'Transfer Mandiri', icon: Landmark, color: 'text-amber-500', detail: '0987654321', subDetail: 'A/N Ngolab' },
-  'Tunai': { label: 'Tunai / Cash', icon: Banknote, color: 'text-green-600', detail: 'Bayar di Kasir', subDetail: 'Tunjukkan ID Pesanan' },
+  'QRIS':    { label: 'QRIS / Semua Bank',  icon: QrCode,    color: 'text-indigo-600', detail: 'Scan QR Code',    subDetail: 'OVO, Dana, GoPay, LinkAja, BCA Mobile' },
+  'GoPay':   { label: 'GoPay',              icon: Wallet,    color: 'text-emerald-500',detail: '0812-3456-7890', subDetail: 'A/N Ngolab' },
+  'OVO':     { label: 'OVO',                icon: CreditCard,color: 'text-purple-600', detail: '0812-3456-7890', subDetail: 'A/N Ngolab' },
+  'Dana':    { label: 'Dana',               icon: Wallet,    color: 'text-blue-500',   detail: '0812-3456-7890', subDetail: 'A/N Ngolab' },
+  'BCA':     { label: 'Transfer BCA',       icon: Landmark,  color: 'text-blue-700',   detail: '1234567890',     subDetail: 'A/N Ngolab' },
+  'Mandiri': { label: 'Transfer Mandiri',   icon: Landmark,  color: 'text-amber-500',  detail: '0987654321',     subDetail: 'A/N Ngolab' },
+  'Tunai':   { label: 'Tunai / Cash',       icon: Banknote,  color: 'text-green-600',  detail: 'Bayar di Kasir', subDetail: 'Tunjukkan ID Pesanan' },
 };
 
-export default function PaymentModal({ isOpen, onClose, total, onConfirm }: PaymentModalProps) {
+export default function PaymentModal({
+  isOpen,
+  onClose,
+  total,
+  onConfirm,
+  myVouchers,
+  appliedVoucher,
+  setAppliedVoucher,
+}: PaymentModalProps) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('QRIS');
-  const [customerName, setCustomerName] = useState<string>('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [paymentProof, setPaymentProof] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [customerName, setCustomerName]     = useState<string>('');
+  const [isProcessing, setIsProcessing]     = useState(false);
+  const [copied, setCopied]                 = useState(false);
+  const [paymentProof, setPaymentProof]     = useState<string | null>(null);
+  const fileInputRef                        = useRef<HTMLInputElement>(null);
+  const [showVoucherSheet, setShowVoucherSheet] = useState(false);
 
-  const handlePay = () => {
-    if (!customerName.trim()) {
-      alert('Mohon masukkan nama pemesan terlebih dahulu');
-      return;
-    }
-    if (selectedMethod !== 'Tunai' && !paymentProof) {
-      return;
-    }
-    setIsProcessing(true);
-    setTimeout(() => {
-      onConfirm(selectedMethod, customerName.trim());
-      setIsProcessing(false);
-    }, 2000);
-  };
+  // ── Hitung diskon voucher ──────────────────────────────────────────────────
+  let discountAmount = 0;
+  if (appliedVoucher && appliedVoucher.discount !== 'GRATIS') {
+    const numStr = appliedVoucher.discount.replace(/[^0-9]/g, '');
+    discountAmount = parseInt(numStr, 10) || 0;
+  }
+  const finalTotal = Math.max(0, total - discountAmount);
 
+  // ── Helpers ───────────────────────────────────────────────────────────────
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert('File terlalu besar! Maksimal 5MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPaymentProof(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert('File terlalu besar! Maksimal 5MB'); return; }
+    const reader = new FileReader();
+    reader.onloadend = () => setPaymentProof(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const removeProof = () => {
@@ -69,13 +69,24 @@ export default function PaymentModal({ isOpen, onClose, total, onConfirm }: Paym
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const methods = Object.keys(METHOD_DETAILS) as PaymentMethod[];
-  const isButtonDisabled = !customerName.trim() || (selectedMethod !== 'Tunai' && !paymentProof);
+  const handlePay = () => {
+    if (!customerName.trim()) { alert('Mohon masukkan nama pemesan terlebih dahulu'); return; }
+    if (selectedMethod !== 'Tunai' && !paymentProof) { alert('Mohon upload bukti bayar terlebih dahulu'); return; }
+    setIsProcessing(true);
+    setTimeout(() => {
+      onConfirm(selectedMethod, customerName.trim());
+      setIsProcessing(false);
+    }, 2000);
+  };
+
+  const methods   = Object.keys(METHOD_DETAILS) as PaymentMethod[];
+  const isDisabled = !customerName.trim() || (selectedMethod !== 'Tunai' && !paymentProof);
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-6">
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -84,16 +95,18 @@ export default function PaymentModal({ isOpen, onClose, total, onConfirm }: Paym
             className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
           />
 
+          {/* Modal Card */}
           <motion.div
-            initial={{ y: 50, opacity: 0, scale: 0.95 }}
+            initial={{ y: 60, opacity: 0, scale: 0.97 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 50, opacity: 0, scale: 0.95 }}
-            className="bg-white w-full max-w-[480px] rounded-[36px] overflow-hidden relative z-10 shadow-2xl flex flex-col max-h-[90vh]"
+            exit={{ y: 60, opacity: 0, scale: 0.97 }}
+            className="bg-white w-full sm:max-w-[480px] rounded-t-[36px] sm:rounded-[36px] overflow-hidden relative z-10 shadow-2xl flex flex-col"
+            style={{ maxHeight: '92vh' }}
           >
             {!isProcessing ? (
               <>
-                {/* Header */}
-                <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-white sticky top-0 z-20">
+                {/* ── Sticky Header ─────────────────────────────────────── */}
+                <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-white shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-orange-50 rounded-2xl flex items-center justify-center text-[#FF6B00]">
                       <CreditCard size={20} />
@@ -103,136 +116,181 @@ export default function PaymentModal({ isOpen, onClose, total, onConfirm }: Paym
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Pilih metode bayar</p>
                     </div>
                   </div>
-                  <button 
-                    onClick={onClose} 
-                    className="p-2.5 hover:bg-slate-50 rounded-2xl text-slate-400 transition-colors"
-                  >
+                  <button onClick={onClose} className="p-2.5 hover:bg-slate-50 rounded-2xl text-slate-400 transition-colors">
                     <X size={20} />
                   </button>
                 </div>
 
-                {/* Total Info */}
-                <div className="p-6 pb-2">
-                  <div className="bg-gradient-to-br from-[#FF6B00] to-[#FF8C38] rounded-[32px] p-6 text-center relative overflow-hidden group shadow-lg shadow-orange-100">
-                    <p className="text-white/70 text-[10px] font-black uppercase tracking-[0.2em] mb-1 relative z-10">Total Harga</p>
-                    <p className="text-3xl font-black text-white tracking-tight relative z-10">Rp {total.toLocaleString('id-ID')}</p>
-                    <motion.div 
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                      className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"
-                    />
-                  </div>
-                </div>
-
-                {/* Input Nama Customer */}
-                <div className="px-6 pt-2 pb-0">
-                  <div className="space-y-1.5 text-left bg-slate-50 p-4 rounded-[28px] border border-slate-100">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1">
-                      Nama Pemesan <span className="text-[#FF6B00]">*</span>
-                    </label>
-                    <input 
-                      type="text" 
-                      placeholder="Contoh: Budi (Meja 01)"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-slate-800 font-bold text-sm focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all focus:outline-none"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Methods List */}
-                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6 no-scrollbar">
-                  <div className="space-y-3">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Metode Tersedia</p>
-                    <div className="space-y-2">
-                      {methods.map((method) => {
-                        const info = METHOD_DETAILS[method];
-                        const isSelected = selectedMethod === method;
-                        
-                        return (
-                          <div key={method} className="space-y-2">
-                            <button
-                              onClick={() => setSelectedMethod(method)}
-                              className={`w-full flex items-center justify-between p-4 rounded-[24px] border-2 transition-all duration-300 ${
-                                isSelected
-                                  ? 'border-[#FF6B00] bg-orange-50/50'
-                                  : 'border-slate-50 bg-slate-100/50 hover:border-slate-200'
-                              }`}
-                            >
-                              <div className="flex items-center gap-4">
-                                <div className={`p-2.5 rounded-xl bg-white shadow-sm ${info.color}`}>
-                                  <info.icon size={20} />
-                                </div>
-                                <div className="text-left">
-                                  <p className="font-black text-slate-800 text-sm">{info.label}</p>
-                                  {!isSelected && <p className="text-[10px] text-slate-400 font-bold">{info.subDetail}</p>}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {isSelected ? (
-                                  <div className="bg-[#FF6B00] rounded-full p-1">
-                                    <CheckCircle2 className="text-white" size={14} />
-                                  </div>
-                                ) : (
-                                  <ChevronRight size={16} className="text-slate-300" />
-                                )}
-                              </div>
-                            </button>
-
-                            <AnimatePresence>
-                              {isSelected && (
-                                <motion.div
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: 'auto', opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  className="overflow-hidden"
-                                >
-                                  <div className="bg-white border-2 border-orange-100 rounded-[24px] p-4 flex items-center justify-between">
-                                    <div className="flex-1">
-                                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                        {method === 'QRIS' ? 'Instruksi' : 'Nomor Reff'}
-                                      </p>
-                                      <p className="font-black text-slate-700 text-base">{info.detail}</p>
-                                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">{info.subDetail}</p>
-                                    </div>
-                                    {method !== 'QRIS' && method !== 'Tunai' && (
-                                      <button 
-                                        onClick={() => copyToClipboard(info.detail)}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                                          copied ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                                        }`}
-                                      >
-                                        {copied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
-                                        {copied ? 'Copied' : 'Salin'}
-                                      </button>
-                                    )}
-                                    {method === 'QRIS' && (
-                                      <div className="p-1.5 bg-slate-50 rounded-lg">
-                                        <QrCode size={32} className="text-slate-400" />
-                                      </div>
-                                    )}
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        );
-                      })}
+                {/* ── Scrollable Body ───────────────────────────────────── */}
+                <div className="overflow-y-auto flex-1" style={{ overscrollBehavior: 'contain' }}>
+                  {/* Total Card */}
+                  <div className="px-6 pt-6 pb-3">
+                    <div className="bg-gradient-to-br from-[#FF6B00] to-[#FF8C38] rounded-[32px] p-6 relative overflow-hidden shadow-lg shadow-orange-100">
+                      <div className="relative z-10 flex flex-col items-center text-center">
+                        <p className="text-white/70 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Total Pembayaran</p>
+                        {appliedVoucher && discountAmount > 0 ? (
+                          <>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-white/60 line-through font-medium text-sm">Rp {total.toLocaleString('id-ID')}</p>
+                              <span className="bg-white text-[#FF6B00] px-2 py-0.5 rounded-md text-[10px] font-black">-{appliedVoucher.discount}</span>
+                            </div>
+                            <p className="text-3xl font-black text-white tracking-tight">Rp {finalTotal.toLocaleString('id-ID')}</p>
+                          </>
+                        ) : (
+                          <p className="text-3xl font-black text-white tracking-tight">Rp {finalTotal.toLocaleString('id-ID')}</p>
+                        )}
+                      </div>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
+                        className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl"
+                      />
                     </div>
                   </div>
 
-                  {/* Upload Evidence Section */}
-                  {selectedMethod !== 'Tunai' && (
-                    <div className="space-y-3 pt-2">
-                      <div className="flex items-center justify-between px-1">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Upload Bukti Bayar <span className="text-red-500">*</span></p>
+                  {/* ── Voucher Section ───────────────────────────────────── */}
+                  <div className="px-6 pb-3">
+                    {!appliedVoucher ? (
+                      <button
+                        onClick={() => setShowVoucherSheet(true)}
+                        className="w-full bg-slate-50 border border-dashed border-slate-200 rounded-[28px] p-4 flex items-center justify-between group hover:bg-orange-50/50 hover:border-orange-200 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-orange-100 text-[#FF6B00] rounded-2xl flex items-center justify-center">
+                            <Ticket size={20} />
+                          </div>
+                          <div className="text-left">
+                            <p className="font-black text-slate-800 text-sm">Gunakan Voucher</p>
+                            <p className="text-[10px] font-bold text-slate-400 mt-0.5">Makin hemat pakai voucher!</p>
+                          </div>
+                        </div>
+                        <ChevronRight size={20} className="text-slate-300 group-hover:text-[#FF6B00] transition-colors" />
+                      </button>
+                    ) : (
+                      <div className="w-full bg-orange-50 border border-orange-200 rounded-[28px] p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-[#FF6B00] text-white rounded-2xl flex items-center justify-center">
+                            <CheckCircle2 size={20} />
+                          </div>
+                          <div className="text-left">
+                            <p className="font-black text-[#FF6B00] text-sm leading-tight">{appliedVoucher.title}</p>
+                            <p className="text-[10px] font-bold text-orange-500 mt-0.5">Voucher berhasil dipasang ✓</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setAppliedVoucher(null)}
+                          className="text-xs font-black text-slate-400 hover:text-red-500 underline transition-colors px-2 py-1"
+                        >
+                          Hapus
+                        </button>
                       </div>
-                      
+                    )}
+                  </div>
+
+                  {/* ── Nama Pemesan ──────────────────────────────────────── */}
+                  <div className="px-6 pb-4">
+                    <div className="bg-slate-50 p-4 rounded-[28px] border border-slate-100">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1 mb-2">
+                        Nama Pemesan <span className="text-[#FF6B00]">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Budi (Meja 01)"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-slate-800 font-bold text-sm focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* ── Metode Pembayaran ─────────────────────────────────── */}
+                  <div className="px-6 pb-4 space-y-2">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Metode Tersedia</p>
+                    {methods.map((method) => {
+                      const info       = METHOD_DETAILS[method];
+                      const isSelected = selectedMethod === method;
+                      return (
+                        <div key={method} className="space-y-2">
+                          <button
+                            onClick={() => setSelectedMethod(method)}
+                            className={`w-full flex items-center justify-between p-4 rounded-[24px] border-2 transition-all duration-200 ${
+                              isSelected
+                                ? 'border-[#FF6B00] bg-orange-50/50'
+                                : 'border-slate-100 bg-slate-50 hover:border-slate-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2.5 rounded-xl bg-white shadow-sm ${info.color}`}>
+                                <info.icon size={20} />
+                              </div>
+                              <div className="text-left">
+                                <p className="font-black text-slate-800 text-sm">{info.label}</p>
+                                {!isSelected && (
+                                  <p className="text-[10px] text-slate-400 font-bold">{info.subDetail}</p>
+                                )}
+                              </div>
+                            </div>
+                            {isSelected ? (
+                              <div className="bg-[#FF6B00] rounded-full p-1">
+                                <CheckCircle2 className="text-white" size={14} />
+                              </div>
+                            ) : (
+                              <ChevronRight size={16} className="text-slate-300" />
+                            )}
+                          </button>
+
+                          {/* Detail metode yang dipilih */}
+                          <AnimatePresence>
+                            {isSelected && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="bg-white border-2 border-orange-100 rounded-[24px] p-4 flex items-center justify-between mx-1">
+                                  <div className="flex-1">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                      {method === 'QRIS' ? 'Instruksi' : 'Nomor Reff'}
+                                    </p>
+                                    <p className="font-black text-slate-700 text-base">{info.detail}</p>
+                                    <p className="text-[10px] font-bold text-slate-400 mt-0.5">{info.subDetail}</p>
+                                  </div>
+                                  {method !== 'QRIS' && method !== 'Tunai' && (
+                                    <button
+                                      onClick={() => copyToClipboard(info.detail)}
+                                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                                        copied ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                      }`}
+                                    >
+                                      {copied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                                      {copied ? 'Copied' : 'Salin'}
+                                    </button>
+                                  )}
+                                  {method === 'QRIS' && (
+                                    <div className="p-1.5 bg-slate-50 rounded-lg">
+                                      <QrCode size={32} className="text-slate-400" />
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* ── Upload Bukti Bayar ────────────────────────────────── */}
+                  {selectedMethod !== 'Tunai' && (
+                    <div className="px-6 pb-4 space-y-3">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
+                        Upload Bukti Bayar <span className="text-red-500">*</span>
+                      </p>
                       {!paymentProof ? (
                         <button
                           onClick={() => fileInputRef.current?.click()}
-                          className="w-full border-2 border-dashed border-slate-200 bg-slate-50/50 rounded-[32px] p-8 flex flex-col items-center justify-center gap-3 group hover:border-orange-200 hover:bg-orange-50/30 transition-all cursor-pointer"
+                          className="w-full border-2 border-dashed border-slate-200 bg-slate-50 rounded-[32px] p-8 flex flex-col items-center justify-center gap-3 group hover:border-orange-200 hover:bg-orange-50/30 transition-all"
                         >
                           <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-slate-300 group-hover:text-[#FF6B00] shadow-sm transition-colors">
                             <Upload size={28} />
@@ -241,8 +299,8 @@ export default function PaymentModal({ isOpen, onClose, total, onConfirm }: Paym
                             <p className="text-sm font-black text-slate-700">Pilih Foto Bukti Bayar</p>
                             <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">Format: JPG, PNG • Max 5MB</p>
                           </div>
-                          <input 
-                            type="file" 
+                          <input
+                            type="file"
                             ref={fileInputRef}
                             onChange={handleFileChange}
                             accept="image/*"
@@ -253,21 +311,21 @@ export default function PaymentModal({ isOpen, onClose, total, onConfirm }: Paym
                         <div className="relative rounded-[32px] overflow-hidden border-2 border-orange-100 group">
                           <img src={paymentProof} alt="Bukti Bayar" className="w-full h-48 object-cover" />
                           <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-sm">
-                            <button 
+                            <button
                               onClick={() => fileInputRef.current?.click()}
                               className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-700 hover:text-[#FF6B00] transition-colors shadow-xl"
                             >
                               <ImageIcon size={20} />
                             </button>
-                            <button 
+                            <button
                               onClick={removeProof}
                               className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors shadow-xl"
                             >
                               <Trash2 size={20} />
                             </button>
                           </div>
-                          <input 
-                            type="file" 
+                          <input
+                            type="file"
                             ref={fileInputRef}
                             onChange={handleFileChange}
                             accept="image/*"
@@ -278,27 +336,32 @@ export default function PaymentModal({ isOpen, onClose, total, onConfirm }: Paym
                     </div>
                   )}
 
+                  {/* ── Info Tunai ────────────────────────────────────────── */}
                   {selectedMethod === 'Tunai' && (
-                    <div className="bg-emerald-50 border border-emerald-100 rounded-[28px] p-5 flex items-start gap-4">
-                      <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-emerald-500 shadow-sm flex-shrink-0">
-                        <Banknote size={20} />
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-black text-emerald-800">Menunggu Pembayaran</p>
-                        <p className="text-[11px] text-emerald-600 font-medium leading-relaxed">Silakan lanjut pesan sekarang dan lakukan pembayaran langsung di kasir saat pesanan sudah siap.</p>
+                    <div className="px-6 pb-6">
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-[28px] p-5 flex items-start gap-4">
+                        <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-emerald-500 shadow-sm shrink-0">
+                          <Banknote size={20} />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm font-black text-emerald-800">Menunggu Pembayaran</p>
+                          <p className="text-[11px] text-emerald-600 font-medium leading-relaxed">
+                            Silakan lanjut pesan sekarang dan lakukan pembayaran langsung di kasir saat pesanan sudah siap.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Footer Action */}
-                <div className="p-6 border-t border-slate-50 bg-white sticky bottom-0">
+                {/* ── Sticky Footer ─────────────────────────────────────── */}
+                <div className="p-6 border-t border-slate-100 bg-white shrink-0">
                   <button
-                    disabled={isButtonDisabled}
+                    disabled={isDisabled}
                     onClick={handlePay}
                     className={`w-full py-5 rounded-[28px] font-black text-lg shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 ${
-                      isButtonDisabled 
-                        ? 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none' 
+                      isDisabled
+                        ? 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none'
                         : 'bg-[#FF6B00] text-white shadow-orange-100 hover:bg-[#e66000]'
                     }`}
                   >
@@ -311,11 +374,12 @@ export default function PaymentModal({ isOpen, onClose, total, onConfirm }: Paym
                 </div>
               </>
             ) : (
+              /* ── Processing State ─────────────────────────────────────── */
               <div className="py-24 flex flex-col items-center justify-center p-12">
                 <div className="relative">
                   <motion.div
                     animate={{ rotate: 360 }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                    transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
                     className="w-32 h-32 border-4 border-slate-100 border-t-[#FF6B00] rounded-full"
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -329,6 +393,69 @@ export default function PaymentModal({ isOpen, onClose, total, onConfirm }: Paym
               </div>
             )}
           </motion.div>
+
+          {/* ── Voucher Bottom Sheet ───────────────────────────────────── */}
+          <AnimatePresence>
+            {showVoucherSheet && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowVoucherSheet(false)}
+                  className="absolute inset-0 z-20"
+                />
+                <motion.div
+                  initial={{ y: '100%' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '100%' }}
+                  transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+                  className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[36px] z-30 shadow-[0_-10px_60px_rgba(0,0,0,0.15)] flex flex-col"
+                  style={{ maxHeight: '70vh' }}
+                >
+                  <div className="p-6 border-b border-slate-50 flex items-center justify-between shrink-0">
+                    <h3 className="font-black text-lg text-slate-800">Pilih Voucher</h3>
+                    <button
+                      onClick={() => setShowVoucherSheet(false)}
+                      className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <div className="overflow-y-auto p-6 space-y-3">
+                    {myVouchers.filter(v => !v.used).length === 0 ? (
+                      <div className="text-center py-10">
+                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-300">
+                          <Ticket size={24} />
+                        </div>
+                        <p className="text-slate-400 font-bold text-sm">Tidak ada voucher tersedia.</p>
+                        <p className="text-slate-400 text-xs mt-1">Klaim voucher dulu di menu Rewards ya!</p>
+                      </div>
+                    ) : (
+                      myVouchers.filter(v => !v.used).map((v, i) => (
+                        <button
+                          key={`${v.id}-${i}`}
+                          onClick={() => { setAppliedVoucher(v); setShowVoucherSheet(false); }}
+                          className="w-full text-left border border-slate-100 rounded-[24px] overflow-hidden hover:border-orange-200 transition-colors"
+                        >
+                          <div className={`bg-gradient-to-r ${v.color} px-4 py-3 flex items-center gap-3`}>
+                            <span className="text-2xl">{v.icon}</span>
+                            <div className="flex-1">
+                              <p className="text-white font-black text-sm">{v.title}</p>
+                              <p className="text-white/80 text-[10px] font-bold">{v.description}</p>
+                            </div>
+                            <div className="bg-white text-slate-800 px-3 py-1 rounded-xl font-black text-xs">
+                              Pakai
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       )}
     </AnimatePresence>
