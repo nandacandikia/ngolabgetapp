@@ -61,23 +61,6 @@ export default function Header({ tableNumber, isGuest, zoneName, searchQuery, se
             </div>
           </button>
           
-          {tableNumber !== 'Belum Scan' && tableNumber !== 'Mode Tamu' && (
-            <div className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-[15px] flex items-center gap-2 hover:bg-slate-100 transition-colors cursor-default">
-              <div className="bg-[#FF6B00] p-1 rounded-full text-white">
-                <MapPin size={10} strokeWidth={3} />
-              </div>
-              <div>
-                <p className="text-[8px] text-slate-400 font-black uppercase leading-none">Lokasi / Mode</p>
-                <p className="font-bold text-[11px] text-slate-700 leading-tight">
-                  {(() => {
-                    const base = /^\d+$/.test(tableNumber) ? `Meja ${tableNumber}` : tableNumber;
-                    return zoneName && zoneName !== 'Area Meja' ? `${base} (${zoneName})` : base;
-                  })()}
-                </p>
-              </div>
-            </div>
-          )}
-
           {onPlayGame && (
             <button 
               onClick={onPlayGame}
