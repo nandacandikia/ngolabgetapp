@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, User, Mail, Phone, Shield, Star, ShoppingBag, LogOut } from 'lucide-react';
+import { X, User, Mail, Phone, Shield, Star, ShoppingBag, LogOut, Ticket } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface ProfileModalProps {
@@ -16,6 +16,7 @@ interface ProfileModalProps {
   onPointsClick: () => void;
   onHistoryClick: () => void;
   onLogout: () => void;
+  onRedeemVoucherClick: () => void;
 }
 
 export default function ProfileModal({
@@ -25,7 +26,8 @@ export default function ProfileModal({
   points,
   onPointsClick,
   onHistoryClick,
-  onLogout
+  onLogout,
+  onRedeemVoucherClick
 }: ProfileModalProps) {
   if (!user) return null;
 
@@ -127,6 +129,29 @@ export default function ProfileModal({
                 <div className="text-right">
                   <span className="font-black text-amber-600 text-lg">{points.toLocaleString('id-ID')}</span>
                   <span className="block text-[8px] font-black uppercase text-amber-500/80 tracking-wider">Poin</span>
+                </div>
+              </button>
+
+              {/* Redeem Voucher Box */}
+              <button
+                onClick={() => {
+                  onClose();
+                  onRedeemVoucherClick();
+                }}
+                className="w-full bg-orange-50/50 border border-orange-100 hover:bg-orange-50 rounded-2xl p-5 flex items-center justify-between transition-colors text-left active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="bg-[#FF6B00] text-white p-2.5 rounded-xl shadow-md shadow-orange-400/10">
+                    <Ticket size={16} />
+                  </div>
+                  <div>
+                    <h5 className="font-bold text-slate-700 text-sm">Tukar Kode Voucher</h5>
+                    <p className="text-slate-400 text-xs font-semibold">Masukkan kode unik untuk klaim voucher</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="font-black text-orange-600 text-sm">Tukar</span>
+                  <span className="block text-[8px] font-black uppercase text-orange-500/80 tracking-wider">Promo</span>
                 </div>
               </button>
 

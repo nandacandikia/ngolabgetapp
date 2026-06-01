@@ -1,4 +1,4 @@
-import { MapPin, Search, Star, LogOut, History, User, Gamepad2 } from 'lucide-react';
+import { MapPin, Search, Star, LogOut, History, User, Gamepad2, Ticket } from 'lucide-react';
 
 interface HeaderProps {
   tableNumber: string;
@@ -12,9 +12,10 @@ interface HeaderProps {
   onHistoryClick: () => void;
   onProfileClick: () => void;
   onPlayGame?: () => void;
+  onRedeemVoucherClick: () => void;
 }
 
-export default function Header({ tableNumber, isGuest, zoneName, searchQuery, setSearchQuery, points, onPointsClick, onLogout, onHistoryClick, onProfileClick, onPlayGame }: HeaderProps) {
+export default function Header({ tableNumber, isGuest, zoneName, searchQuery, setSearchQuery, points, onPointsClick, onLogout, onHistoryClick, onProfileClick, onPlayGame, onRedeemVoucherClick }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-3 border-b border-slate-100 flex flex-col gap-3">
       <div className="max-w-4xl mx-auto w-full flex items-center justify-between">
@@ -44,6 +45,21 @@ export default function Header({ tableNumber, isGuest, zoneName, searchQuery, se
               </div>
             </button>
           )}
+
+          {/* Redeem Voucher Badge */}
+          <button 
+            onClick={onRedeemVoucherClick}
+            className="bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-[15px] flex items-center gap-2 hover:bg-orange-100/50 transition-colors cursor-pointer active:scale-95"
+            title="Tukar Kode Voucher"
+          >
+            <div className="bg-[#FF6B00] p-1 rounded-full text-white">
+              <Ticket size={10} strokeWidth={2.5} />
+            </div>
+            <div className="text-left hidden sm:block">
+              <p className="text-[8px] text-orange-600 font-black uppercase leading-none">Tukar</p>
+              <p className="font-bold text-[11px] text-orange-700 leading-tight">Voucher</p>
+            </div>
+          </button>
           
           {tableNumber !== 'Belum Scan' && tableNumber !== 'Mode Tamu' && (
             <div className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-[15px] flex items-center gap-2 hover:bg-slate-100 transition-colors cursor-default">

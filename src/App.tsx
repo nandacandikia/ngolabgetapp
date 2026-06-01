@@ -14,6 +14,7 @@ import PointsModal from './components/PointsModal';
 import OrderHistoryModal from './components/OrderHistoryModal';
 import ProfileModal from './components/ProfileModal';
 import GameScreen from './components/GameScreen';
+import VoucherRedeemModal from './components/VoucherRedeemModal';
 import { motion, AnimatePresence } from 'motion/react';
 import { submitScanTracking } from './services/orderService';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -56,6 +57,7 @@ export default function App() {
   });
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isGameOpen, setIsGameOpen] = useState(false);
+  const [isRedeemOpen, setIsRedeemOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(() => {
     try {
       return JSON.parse(localStorage.getItem('maslahat_user') || 'null');
@@ -632,6 +634,7 @@ export default function App() {
         onHistoryClick={() => setIsHistoryOpen(true)}
         onProfileClick={() => setIsProfileOpen(true)}
         onPlayGame={handlePlayGame}
+        onRedeemVoucherClick={() => setIsRedeemOpen(true)}
       />
 
       <PointsModal
@@ -639,6 +642,12 @@ export default function App() {
         onClose={() => setIsPointsModalOpen(false)}
         points={points}
         onClaim={handleClaimPoints}
+        myVouchers={myVouchers}
+        setMyVouchers={setMyVouchers}
+      />
+      <VoucherRedeemModal
+        isOpen={isRedeemOpen}
+        onClose={() => setIsRedeemOpen(false)}
         myVouchers={myVouchers}
         setMyVouchers={setMyVouchers}
       />
@@ -999,6 +1008,7 @@ export default function App() {
         onPointsClick={() => setIsPointsModalOpen(true)}
         onHistoryClick={() => setIsHistoryOpen(true)}
         onLogout={handleLogout}
+        onRedeemVoucherClick={() => setIsRedeemOpen(true)}
       />
 
       {/* Modal Popup Notifikasi Kring Restoran */}
