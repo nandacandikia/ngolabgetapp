@@ -1033,7 +1033,7 @@ export default function App() {
               className="bg-white w-full max-w-sm rounded-3xl overflow-hidden relative z-10 shadow-2xl"
             >
               {/* Top accent bar */}
-              <div className="h-1.5 bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-500" />
+              <div className="h-1.5 bg-gradient-to-r from-[#FF6B00] via-orange-500 to-amber-500" />
               
               <div className="p-8 text-center">
                 {/* Success icon */}
@@ -1041,12 +1041,12 @@ export default function App() {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 15, delay: 0.1 }}
-                  className="mx-auto w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-6 relative"
+                  className="mx-auto w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-6 relative"
                 >
                   <motion.div
                     animate={{ scale: [1, 1.15, 1] }}
                     transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-                    className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-200"
+                    className="w-16 h-16 bg-gradient-to-br from-[#FF6B00] to-amber-500 rounded-full flex items-center justify-center shadow-lg shadow-orange-200"
                   >
                     <Bell size={28} className="text-white" />
                   </motion.div>
@@ -1054,13 +1054,13 @@ export default function App() {
                   <motion.div
                     animate={{ scale: [1, 1.6], opacity: [0.3, 0] }}
                     transition={{ repeat: Infinity, duration: 1.5, ease: 'easeOut' }}
-                    className="absolute inset-0 border-2 border-emerald-400 rounded-full"
+                    className="absolute inset-0 border-2 border-[#FF6B00] rounded-full"
                   />
                 </motion.div>
 
                 {/* Status badge */}
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase tracking-widest mb-4">
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 text-[#FF6B00] text-[10px] font-bold uppercase tracking-widest mb-4">
+                  <span className="w-1.5 h-1.5 bg-[#FF6B00] rounded-full animate-pulse" />
                   Pesanan Siap
                 </div>
 
@@ -1076,7 +1076,7 @@ export default function App() {
                     setIsRinging(false);
                     setShowStatus(true);
                   }}
-                  className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white py-4 rounded-2xl font-bold text-sm shadow-lg shadow-emerald-200 active:scale-[0.98] transition-all"
+                  className="w-full bg-gradient-to-r from-[#FF6B00] to-amber-500 hover:from-[#e66000] hover:to-amber-600 text-white py-4 rounded-2xl font-bold text-sm shadow-lg shadow-orange-200 active:scale-[0.98] transition-all"
                 >
                   Lihat Detail Pesanan
                 </button>

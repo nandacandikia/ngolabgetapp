@@ -17,23 +17,6 @@ interface ProfileModalProps {
   onHistoryClick: () => void;
   onLogout: () => void;
   onRedeemVoucherClick: () => void;
-}
-
-interface ProfileModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  user: {
-    name: string;
-    email: string;
-    nim?: string;
-    phone?: string;
-    role?: string;
-  } | null;
-  points: number;
-  onPointsClick: () => void;
-  onHistoryClick: () => void;
-  onLogout: () => void;
-  onRedeemVoucherClick: () => void;
   isInline?: boolean;
 }
 
