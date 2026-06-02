@@ -112,8 +112,8 @@ export default function PaymentModal({
                       <CreditCard size={20} />
                     </div>
                     <div>
-                      <h2 className="font-black text-lg text-slate-800 leading-none">Pembayaran</h2>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Pilih metode bayar</p>
+                      <h2 className="font-black text-lg text-slate-800 leading-none">Konfirmasi Pesanan</h2>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Pilih metode & kirim pesanan</p>
                     </div>
                   </div>
                   <button onClick={onClose} className="p-2.5 hover:bg-slate-50 rounded-2xl text-slate-400 transition-colors">
@@ -195,7 +195,7 @@ export default function PaymentModal({
                       </label>
                       <input
                         type="text"
-                        placeholder="Contoh: Budi (Meja 01)"
+                        placeholder="Contoh: Budi"
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
                         className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-slate-800 font-bold text-sm focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all focus:outline-none"
@@ -281,12 +281,20 @@ export default function PaymentModal({
                     })}
                   </div>
 
-                  {/* ── Upload Bukti Bayar ────────────────────────────────── */}
+                  {/* ── Upload Bukti Transfer ────────────────────────────── */}
                   {selectedMethod !== 'Tunai' && (
                     <div className="px-6 pb-4 space-y-3">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
-                        Upload Bukti Bayar <span className="text-red-500">*</span>
+                        Upload Bukti Transfer <span className="text-red-500">*</span>
                       </p>
+                      <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex items-start gap-3">
+                        <div className="w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center text-white shrink-0 mt-0.5">
+                          <span className="text-[10px] font-black">!</span>
+                        </div>
+                        <p className="text-[11px] text-amber-700 font-medium leading-relaxed">
+                          Bukti transfer akan diverifikasi oleh kasir. Pesanan baru diproses setelah pembayaran terkonfirmasi.
+                        </p>
+                      </div>
                       {!paymentProof ? (
                         <button
                           onClick={() => fileInputRef.current?.click()}
@@ -296,7 +304,7 @@ export default function PaymentModal({
                             <Upload size={28} />
                           </div>
                           <div className="text-center">
-                            <p className="text-sm font-black text-slate-700">Pilih Foto Bukti Bayar</p>
+                            <p className="text-sm font-black text-slate-700">Upload Bukti Transfer</p>
                             <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">Format: JPG, PNG • Max 5MB</p>
                           </div>
                           <input
@@ -339,14 +347,14 @@ export default function PaymentModal({
                   {/* ── Info Tunai ────────────────────────────────────────── */}
                   {selectedMethod === 'Tunai' && (
                     <div className="px-6 pb-6">
-                      <div className="bg-emerald-50 border border-emerald-100 rounded-[28px] p-5 flex items-start gap-4">
-                        <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-emerald-500 shadow-sm shrink-0">
+                      <div className="bg-amber-50 border border-amber-100 rounded-[28px] p-5 flex items-start gap-4">
+                        <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-amber-500 shadow-sm shrink-0">
                           <Banknote size={20} />
                         </div>
                         <div className="space-y-1">
-                          <p className="text-sm font-black text-emerald-800">Menunggu Pembayaran</p>
-                          <p className="text-[11px] text-emerald-600 font-medium leading-relaxed">
-                            Silakan lanjut pesan sekarang dan lakukan pembayaran langsung di kasir saat pesanan sudah siap.
+                          <p className="text-sm font-black text-amber-800">Bayar di Kasir</p>
+                          <p className="text-[11px] text-amber-700 font-medium leading-relaxed">
+                            Pesanan akan dikirim ke dapur setelah Anda menyelesaikan pembayaran langsung di kasir. Tunjukkan ID pesanan kepada petugas kasir.
                           </p>
                         </div>
                       </div>
@@ -365,11 +373,13 @@ export default function PaymentModal({
                         : 'bg-[#FF6B00] text-white shadow-orange-100 hover:bg-[#e66000]'
                     }`}
                   >
-                    Bayar Sekarang
+                    Kirim Pesanan
                     <ChevronRight size={20} />
                   </button>
-                  <p className="text-center text-[10px] text-slate-400 font-bold mt-4 uppercase tracking-[0.2em]">
-                    Aman • Cepat • Terpercaya
+                  <p className="text-center text-[10px] text-slate-400 font-bold mt-4 leading-relaxed">
+                    {selectedMethod === 'Tunai'
+                      ? 'Pembayaran dilakukan langsung di kasir'
+                      : 'Pembayaran akan diverifikasi oleh kasir'}
                   </p>
                 </div>
               </>
@@ -387,8 +397,8 @@ export default function PaymentModal({
                   </div>
                 </div>
                 <div className="text-center mt-10 space-y-2">
-                  <h3 className="text-2xl font-black text-slate-800 italic">Memproses Pesanan</h3>
-                  <p className="text-slate-400 font-bold text-sm">Pesananmu sedang dikirim ke dapur...</p>
+                  <h3 className="text-2xl font-black text-slate-800">Mengirim Pesanan</h3>
+                  <p className="text-slate-400 font-bold text-sm">Pesananmu sedang dikirim ke kasir untuk diverifikasi...</p>
                 </div>
               </div>
             )}

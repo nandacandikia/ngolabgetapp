@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ShoppingBag, Clock, LogIn, Bell, Sparkles, QrCode, X } from 'lucide-react';
+import { ShoppingBag, Clock, LogIn, Bell, QrCode, X } from 'lucide-react';
 import { MenuItem, CartItem, Category, Order, PaymentMethod, Voucher, MyVoucher } from './types';
 import Header from './components/Header';
 import CategoryFilter from './components/CategoryFilter';
@@ -495,8 +495,37 @@ export default function App() {
       completedOrder.status === 'DIBATALKAN';
     if (isFinalStatus) return;
 
-    // Audio kring restoran yang khas dan renyah
-    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/995/995-preview.mp3');
+    // Professional notification chime using Web Audio API
+    const playProfessionalChime = () => {
+      try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const playTone = (freq: number, startTime: number, duration: number, volume: number) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime + startTime);
+          gain.gain.setValueAtTime(0, audioCtx.currentTime + startTime);
+          gain.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + startTime + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + startTime + duration);
+          osc.start(audioCtx.currentTime + startTime);
+          osc.stop(audioCtx.currentTime + startTime + duration);
+        };
+        // Professional ascending chime: C6 → E6 → G6 (clean, elegant)
+        playTone(1047, 0, 0.3, 0.15);
+        playTone(1319, 0.15, 0.3, 0.15);
+        playTone(1568, 0.3, 0.5, 0.12);
+        // Repeat after 2 seconds
+        setTimeout(() => {
+          playTone(1047, 0, 0.3, 0.12);
+          playTone(1319, 0.15, 0.3, 0.12);
+          playTone(1568, 0.3, 0.5, 0.10);
+        }, 2000);
+      } catch (e) {
+        console.log('Audio not supported:', e);
+      }
+    };
 
     const checkStatus = async () => {
       try {
@@ -509,13 +538,7 @@ export default function App() {
 
           if (isFinished && completedOrder.status !== newStatus) {
             setIsRinging(true);
-            audio.play().catch(e => console.log("Gagal putar suara (Butuh interaksi user):", e));
-
-            // Putar kedua kali setelah 1.5 detik agar dering kring lebih berasa
-            setTimeout(() => {
-              audio.currentTime = 0;
-              audio.play().catch(e => console.log(e));
-            }, 1500);
+            playProfessionalChime();
 
             // Auto stop ringing setelah 15 detik
             setTimeout(() => setIsRinging(false), 15000);
@@ -544,7 +567,6 @@ export default function App() {
     const interval = setInterval(checkStatus, 3000); // Cek tiap 3 detik agar cepat responsif
     return () => {
       clearInterval(interval);
-      audio.pause();
     };
   }, [completedOrder?.id, completedOrder?.status, isNewOrder]);
 
@@ -578,53 +600,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Overlay Dering / Ringing */}
-      <AnimatePresence>
-        {isRinging && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] flex flex-col items-center justify-center p-6 bg-orange-600/90 text-white text-center"
-          >
-            <motion.div
-              animate={{
-                scale: [1, 1.2, 1],
-                rotate: [0, 10, -10, 10, -10, 0]
-              }}
-              transition={{ repeat: Infinity, duration: 0.5 }}
-              className="bg-white/20 p-8 rounded-full mb-8 backdrop-blur-md"
-            >
-              <div className="bg-white p-6 rounded-full text-orange-600 shadow-2xl">
-                <ShoppingBag size={64} className="animate-bounce" />
-              </div>
-            </motion.div>
-
-            <h2 className="text-4xl font-black mb-4">PESANAN DI ANTAR!</h2>
-            <p className="text-xl font-bold opacity-90 max-w-md">
-              Pesanan kamu sudah dalam perjalanan ke {(() => {
-                const base = /^\d+$/.test(tableNumber) ? `Meja ${tableNumber}` : tableNumber;
-                return zoneName && zoneName !== 'Area Meja' ? `${base} (${zoneName})` : base;
-              })()}. Siap-siap ya!
-            </p>
-
-            <button
-              onClick={() => setIsRinging(false)}
-              className="mt-12 bg-white text-orange-600 px-12 py-5 rounded-full font-black text-xl shadow-2xl active:scale-95 transition-all"
-            >
-              OKE, SAYA TUNGGU!
-            </button>
-
-            <div className="absolute inset-0 -z-10 overflow-hidden">
-              <motion.div
-                animate={{ opacity: [0.1, 0.3, 0.1] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-                className="absolute inset-0 bg-white"
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Professional Notification Overlay */}
 
       <Header
         tableNumber={tableNumber}
@@ -1038,7 +1014,7 @@ export default function App() {
         />
       )}
 
-      {/* Modal Popup Notifikasi Kring Restoran */}
+      {/* Professional Order Ready Notification */}
       <AnimatePresence>
         {isRinging && completedOrder && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
@@ -1046,41 +1022,69 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/70 backdrop-blur-md"
+              onClick={() => { setIsRinging(false); setShowStatus(true); }}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
-              initial={{ scale: 0.8, y: 50 }}
-              animate={{
-                scale: [1, 1.05, 1, 1.05, 1],
-                rotate: [0, -3, 3, -3, 3, 0],
-              }}
-              transition={{ repeat: Infinity, duration: 1.5 }}
-              className="bg-gradient-to-br from-[#FF6B00] to-[#FF8C38] text-white w-full max-w-sm rounded-[40px] p-8 relative z-10 text-center shadow-[0_0_80px_rgba(255,107,0,0.6)] border-4 border-white/20"
+              initial={{ scale: 0.9, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 30 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="bg-white w-full max-w-sm rounded-3xl overflow-hidden relative z-10 shadow-2xl"
             >
-              <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white text-[#FF6B00] p-6 rounded-full shadow-2xl animate-bounce">
-                <Bell size={48} className="animate-pulse" />
-              </div>
+              {/* Top accent bar */}
+              <div className="h-1.5 bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-500" />
+              
+              <div className="p-8 text-center">
+                {/* Success icon */}
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 15, delay: 0.1 }}
+                  className="mx-auto w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mb-6 relative"
+                >
+                  <motion.div
+                    animate={{ scale: [1, 1.15, 1] }}
+                    transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                    className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-200"
+                  >
+                    <Bell size={28} className="text-white" />
+                  </motion.div>
+                  {/* Subtle pulse ring */}
+                  <motion.div
+                    animate={{ scale: [1, 1.6], opacity: [0.3, 0] }}
+                    transition={{ repeat: Infinity, duration: 1.5, ease: 'easeOut' }}
+                    className="absolute inset-0 border-2 border-emerald-400 rounded-full"
+                  />
+                </motion.div>
 
-              <div className="pt-8 space-y-3">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">
-                  <Sparkles size={12} />
-                  Kring Restoran
+                {/* Status badge */}
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase tracking-widest mb-4">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                  Pesanan Siap
                 </div>
-                <h3 className="text-3xl font-black tracking-tight leading-none">PESANANMU SIAP!</h3>
-                <p className="text-white/90 text-sm font-medium leading-relaxed px-2">
-                  Hore! Hidangan lezatmu (#{completedOrder.id}) sudah selesai disiapkan dan siap untuk disajikan.
+
+                <h3 className="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">Pesananmu Sudah Siap</h3>
+                <p className="text-slate-500 text-sm font-medium leading-relaxed">
+                  Pesanan <span className="font-bold text-slate-700">#{completedOrder.id}</span> telah selesai disiapkan dan siap disajikan ke meja Anda.
                 </p>
               </div>
 
-              <div className="mt-8">
+              <div className="px-8 pb-8 flex flex-col gap-3">
                 <button
                   onClick={() => {
                     setIsRinging(false);
                     setShowStatus(true);
                   }}
-                  className="w-full bg-white text-[#FF6B00] py-4 rounded-2xl font-black text-sm shadow-xl active:scale-95 transition-all hover:bg-orange-50 uppercase tracking-wider"
+                  className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white py-4 rounded-2xl font-bold text-sm shadow-lg shadow-emerald-200 active:scale-[0.98] transition-all"
                 >
-                  Tutup & Lihat Struk
+                  Lihat Detail Pesanan
+                </button>
+                <button
+                  onClick={() => setIsRinging(false)}
+                  className="w-full text-slate-400 hover:text-slate-600 py-2 font-semibold text-sm transition-colors"
+                >
+                  Tutup
                 </button>
               </div>
             </motion.div>
