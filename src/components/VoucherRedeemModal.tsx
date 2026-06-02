@@ -8,6 +8,7 @@ interface VoucherRedeemModalProps {
   onClose: () => void;
   myVouchers: MyVoucher[];
   setMyVouchers: React.Dispatch<React.SetStateAction<MyVoucher[]>>;
+  isInline?: boolean;
 }
 
 const REDEEMABLE_CODES: Record<string, Omit<Voucher, 'id'>> = {
@@ -76,7 +77,7 @@ const REDEEMABLE_CODES: Record<string, Omit<Voucher, 'id'>> = {
   }
 };
 
-export default function VoucherRedeemModal({ isOpen, onClose, myVouchers, setMyVouchers }: VoucherRedeemModalProps) {
+export default function VoucherRedeemModal({ isOpen, onClose, myVouchers, setMyVouchers, isInline = false }: VoucherRedeemModalProps) {
   const [code, setCode] = useState('');
   const [status, setStatus] = useState<'idle' | 'validating' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -147,55 +148,41 @@ export default function VoucherRedeemModal({ isOpen, onClose, myVouchers, setMyV
     setSuccessVoucher(null);
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !isInline) return null;
 
-  return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
-        {/* Overlay */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={status !== 'validating' ? onClose : undefined}
-          className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-        />
+  const cardContent = (
+    <div className={`bg-white w-full max-w-2xl mx-auto rounded-[36px] overflow-hidden relative z-10 ${isInline ? 'shadow-xl shadow-slate-100/50 border border-slate-100' : 'shadow-2xl'} flex flex-col`}>
+      {/* Drag Handle for Mobile */}
+      {!isInline && (
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="w-10 h-1 bg-slate-200 rounded-full" />
+        </div>
+      )}
 
-        {/* Modal Card */}
-        <motion.div
-          initial={{ y: '100%', opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: '100%', opacity: 0 }}
-          transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-          className="bg-white w-full max-w-md sm:rounded-[36px] rounded-t-[36px] overflow-hidden relative z-10 shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[85vh]"
-        >
-          {/* Drag Handle for Mobile */}
-          <div className="flex justify-center pt-3 pb-1 sm:hidden">
-            <div className="w-10 h-1 bg-slate-200 rounded-full" />
+      {/* Header */}
+      <div className="px-6 pt-4 pb-3 flex items-center justify-between border-b border-slate-50 bg-gradient-to-r from-orange-500/5 to-amber-500/5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-[#FF6B00] to-amber-500 rounded-2xl flex items-center justify-center shadow-md shadow-orange-100">
+            <Ticket size={18} className="text-white" />
           </div>
-
-          {/* Header */}
-          <div className="px-6 pt-4 pb-3 flex items-center justify-between border-b border-slate-50">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#FF6B00] to-amber-500 rounded-2xl flex items-center justify-center shadow-md shadow-orange-100">
-                <Ticket size={18} className="text-white" />
-              </div>
-              <div>
-                <h2 className="font-black text-base text-slate-800 leading-none">Penukaran Voucher</h2>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Klaim Kode Promo Anda</p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              disabled={status === 'validating'}
-              className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 active:scale-90 transition-all disabled:opacity-50"
-            >
-              <X size={18} />
-            </button>
+          <div className="text-left">
+            <h2 className="font-black text-base text-slate-800 leading-none">Penukaran Voucher</h2>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Klaim Kode Promo Anda</p>
           </div>
+        </div>
+        {!isInline && (
+          <button
+            onClick={onClose}
+            disabled={status === 'validating'}
+            className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 active:scale-90 transition-all disabled:opacity-50 cursor-pointer"
+          >
+            <X size={18} />
+          </button>
+        )}
+      </div>
 
-          {/* Body Content */}
-          <div className="flex-1 overflow-y-auto no-scrollbar p-6">
+      {/* Body Content */}
+      <div className="flex-1 overflow-y-auto no-scrollbar p-6">
             <AnimatePresence mode="wait">
               {status !== 'success' ? (
                 <motion.div
@@ -386,6 +373,34 @@ export default function VoucherRedeemModal({ isOpen, onClose, myVouchers, setMyV
             <Sparkles size={11} fill="currentColor" className="text-slate-500" />
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Mas Yanto Promo</span>
           </div>
+        </div>
+      );
+
+  if (isInline) {
+    return cardContent;
+  }
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
+        {/* Overlay */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={status !== 'validating' ? onClose : undefined}
+          className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+        />
+
+        {/* Modal Card */}
+        <motion.div
+          initial={{ y: '100%', opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: '100%', opacity: 0 }}
+          transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+          className="w-full max-w-md flex flex-col"
+        >
+          {cardContent}
         </motion.div>
       </div>
     </AnimatePresence>

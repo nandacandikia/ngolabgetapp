@@ -15,11 +15,13 @@ import OrderHistoryModal from './components/OrderHistoryModal';
 import ProfileModal from './components/ProfileModal';
 import GameScreen from './components/GameScreen';
 import VoucherRedeemModal from './components/VoucherRedeemModal';
+import BottomNavigation, { TabType } from './components/BottomNavigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { submitScanTracking } from './services/orderService';
 import { Html5Qrcode } from 'html5-qrcode';
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     const params = new URLSearchParams(window.location.search);
     return params.has('meja') || localStorage.getItem('maslahat_auth') === 'true';
@@ -217,6 +219,7 @@ export default function App() {
       localStorage.removeItem('maslahat_user');
     }
     setAuthView('welcome');
+    setActiveTab('dashboard');
   };
 
   const handleClaimPoints = (amount: number) => {
@@ -383,7 +386,7 @@ export default function App() {
 
   const handlePlayGame = () => {
     setIsCartOpen(false);
-    setIsGameOpen(true);
+    setActiveTab('game');
   };
 
   const handleGameComplete = (pointsEarned: number) => {
@@ -472,6 +475,7 @@ export default function App() {
     setIsAuthenticated(false);
     setIsGuest(false);
     setAuthView('welcome');
+    setActiveTab('dashboard');
     localStorage.removeItem('maslahat_auth');
     localStorage.removeItem('maslahat_role');
     localStorage.removeItem('maslahat_table');
@@ -629,12 +633,13 @@ export default function App() {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         points={points}
-        onPointsClick={() => setIsPointsModalOpen(true)}
+        onPointsClick={() => {
+          setActiveTab('profile');
+          setIsPointsModalOpen(true);
+        }}
         onLogout={handleLogout}
-        onHistoryClick={() => setIsHistoryOpen(true)}
-        onProfileClick={() => setIsProfileOpen(true)}
-        onPlayGame={handlePlayGame}
-        onRedeemVoucherClick={() => setIsRedeemOpen(true)}
+        onProfileClick={() => setActiveTab('profile')}
+        activeTab={activeTab}
       />
 
       <PointsModal
@@ -642,12 +647,6 @@ export default function App() {
         onClose={() => setIsPointsModalOpen(false)}
         points={points}
         onClaim={handleClaimPoints}
-        myVouchers={myVouchers}
-        setMyVouchers={setMyVouchers}
-      />
-      <VoucherRedeemModal
-        isOpen={isRedeemOpen}
-        onClose={() => setIsRedeemOpen(false)}
         myVouchers={myVouchers}
         setMyVouchers={setMyVouchers}
       />
@@ -694,129 +693,180 @@ export default function App() {
       </AnimatePresence>
 
       <main className="max-w-4xl mx-auto px-4 mt-6 space-y-8">
-        {tableNumber === 'Mode Tamu' || tableNumber === 'Belum Scan' ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white border border-slate-100 rounded-[32px] p-8 sm:p-12 text-center shadow-xl shadow-slate-100/50 flex flex-col items-center max-w-xl mx-auto my-8 relative overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-3xl -z-10" />
-            <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -z-10" />
-
-            <div className="relative w-36 h-36 mb-8 flex items-center justify-center">
-              <motion.div
-                animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
-                transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                className="bg-gradient-to-tr from-orange-500 to-amber-500 text-white p-7 rounded-[32px] shadow-lg shadow-orange-500/25 relative z-10"
-              >
-                <QrCode size={56} strokeWidth={1.5} />
-              </motion.div>
-              <motion.div
-                animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0, 0.3] }}
-                transition={{ repeat: Infinity, duration: 2, ease: "easeOut" }}
-                className="absolute inset-0 border-2 border-orange-500/30 rounded-[44px]"
-              />
-              <motion.div
-                animate={{ scale: [1, 1.7, 1], opacity: [0.15, 0, 0.15] }}
-                transition={{ repeat: Infinity, duration: 2, delay: 0.5, ease: "easeOut" }}
-                className="absolute inset-0 border border-orange-500/20 rounded-[56px]"
-              />
-            </div>
-
-            <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-3">
-              Scan QR di Meja Anda
-            </h3>
-            <p className="text-slate-500 text-sm font-medium leading-relaxed max-w-sm mb-8">
-              Pindai kode QR yang tertera di meja atau lokasi Anda terlebih dahulu untuk melihat menu hidangan dan mulai memesan.
-            </p>
-
-            <button
-              onClick={() => {
-                setScanResult(null);
-                setScannerError(null);
-                setShowScanner(true);
-              }}
-              className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-sm uppercase tracking-wider px-8 py-4 rounded-2xl shadow-lg shadow-orange-500/25 active:scale-95 transition-all flex items-center justify-center gap-3"
-            >
-              <QrCode size={18} />
-              Scan QR Code Sekarang
-            </button>
-
-            <p className="mt-8 text-xs text-slate-400 font-semibold flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Sistem Pemesanan Mandiri Maslahat
-            </p>
-          </motion.div>
-        ) : (
+        {activeTab === 'dashboard' && (
           <>
-            {tableNumber !== 'Mode Tamu' && tableNumber !== 'Belum Scan' && (
+            {tableNumber === 'Mode Tamu' || tableNumber === 'Belum Scan' ? (
               <motion.div
-                initial={{ opacity: 0, y: -20 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-transparent border border-orange-500/20 rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm backdrop-blur-sm"
+                className="bg-white border border-slate-100 rounded-[32px] p-8 sm:p-12 text-center shadow-xl shadow-slate-100/50 flex flex-col items-center max-w-xl mx-auto my-8 relative overflow-hidden"
               >
-                <div className="flex items-center gap-4">
-                  <div className="bg-[#FF6B00] text-white p-3.5 rounded-2xl shadow-md shadow-orange-500/20">
-                    <QrCode size={24} />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="font-black text-slate-800 text-base">
-                      {(() => {
-                        const base = /^\d+$/.test(tableNumber) ? `Meja ${tableNumber}` : tableNumber;
-                        return zoneName && zoneName !== 'Area Meja' ? `Terhubung ke ${base} (${zoneName})` : `Terhubung ke ${base}`;
-                      })()}
-                    </h3>
-                    <p className="text-slate-500 text-xs font-semibold mt-0.5">
-                      Pesanan akan diantar ke {/^\d+$/.test(tableNumber) ? 'meja' : 'lokasi'} ini. Salah nomor meja/lokasi? Scan QR kembali.
-                    </p>
-                  </div>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-3xl -z-10" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl -z-10" />
+
+                <div className="relative w-36 h-36 mb-8 flex items-center justify-center">
+                  <motion.div
+                    animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
+                    transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                    className="bg-gradient-to-tr from-orange-500 to-amber-500 text-white p-7 rounded-[32px] shadow-lg shadow-orange-500/25 relative z-10"
+                  >
+                    <QrCode size={56} strokeWidth={1.5} />
+                  </motion.div>
+                  <motion.div
+                    animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0, 0.3] }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "easeOut" }}
+                    className="absolute inset-0 border-2 border-orange-500/30 rounded-[44px]"
+                  />
+                  <motion.div
+                    animate={{ scale: [1, 1.7, 1], opacity: [0.15, 0, 0.15] }}
+                    transition={{ repeat: Infinity, duration: 2, delay: 0.5, ease: "easeOut" }}
+                    className="absolute inset-0 border border-orange-500/20 rounded-[56px]"
+                  />
                 </div>
+
+                <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-3">
+                  Scan QR di Meja Anda
+                </h3>
+                <p className="text-slate-500 text-sm font-medium leading-relaxed max-w-sm mb-8">
+                  Pindai kode QR yang tertera di meja atau lokasi Anda terlebih dahulu untuk melihat menu hidangan dan mulai memesan.
+                </p>
+
                 <button
                   onClick={() => {
                     setScanResult(null);
                     setScannerError(null);
                     setShowScanner(true);
                   }}
-                  className="bg-[#FF6B00] hover:bg-[#e66000] text-white font-black text-xs uppercase tracking-wider px-6 py-3.5 rounded-2xl shadow-lg shadow-orange-500/20 active:scale-95 transition-all self-start sm:self-center flex items-center gap-2"
+                  className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-sm uppercase tracking-wider px-8 py-4 rounded-2xl shadow-lg shadow-orange-500/25 active:scale-95 transition-all flex items-center justify-center gap-3 cursor-pointer"
                 >
-                  <QrCode size={16} />
-                  Scan Ulang
+                  <QrCode size={18} />
+                  Scan QR Code Sekarang
                 </button>
-              </motion.div>
-            )}
 
-            <CategoryFilter activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
-
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-              {filteredMenu.map((item) => (
-                <MenuCard key={item.id} item={item} onAdd={(item) => setSelectedItemForNote(item)} />
-              ))}
-            </div>
-
-            {isLoadingMenu && (
-              <div className="flex flex-col items-center justify-center py-20">
-                <div className="w-12 h-12 border-4 border-orange-200 border-t-[#FF6B00] rounded-full animate-spin mb-4" />
-                <p className="font-bold text-slate-400">Menghubungkan ke Kasir...</p>
-              </div>
-            )}
-
-            {!isLoadingMenu && filteredMenu.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 grayscale opacity-40">
-                <ShoppingBag size={64} />
-                <p className="mt-4 font-bold text-slate-400">
-                  {menuData.length === 0 ? (menuError || "Menu tidak ditemukan di database") : "Menu tidak ditemukan"}
+                <p className="mt-8 text-xs text-slate-400 font-semibold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Sistem Pemesanan Mandiri Maslahat
                 </p>
-                {menuData.length === 0 && (
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="mt-4 text-[#FF6B00] font-bold underline"
+              </motion.div>
+            ) : (
+              <>
+                {tableNumber !== 'Mode Tamu' && tableNumber !== 'Belum Scan' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-transparent border border-orange-500/20 rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm backdrop-blur-sm"
                   >
-                    Coba Lagi
-                  </button>
+                    <div className="flex items-center gap-4">
+                      <div className="bg-[#FF6B00] text-white p-3.5 rounded-2xl shadow-md shadow-orange-500/20">
+                        <QrCode size={24} />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-black text-slate-800 text-base">
+                          {(() => {
+                            const base = /^\d+$/.test(tableNumber) ? `Meja ${tableNumber}` : tableNumber;
+                            return zoneName && zoneName !== 'Area Meja' ? `Terhubung ke ${base} (${zoneName})` : `Terhubung ke ${base}`;
+                          })()}
+                        </h3>
+                        <p className="text-slate-500 text-xs font-semibold mt-0.5">
+                          Pesanan akan diantar ke {/^\d+$/.test(tableNumber) ? 'meja' : 'lokasi'} ini. Salah nomor meja/lokasi? Scan QR kembali.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setScanResult(null);
+                        setScannerError(null);
+                        setShowScanner(true);
+                      }}
+                      className="bg-[#FF6B00] hover:bg-[#e66000] text-white font-black text-xs uppercase tracking-wider px-6 py-3.5 rounded-2xl shadow-lg shadow-orange-500/20 active:scale-95 transition-all self-start sm:self-center flex items-center gap-2 cursor-pointer"
+                    >
+                      <QrCode size={16} />
+                      Scan Ulang
+                    </button>
+                  </motion.div>
                 )}
-              </div>
+
+                <CategoryFilter activeCategory={activeCategory} setActiveCategory={setActiveCategory} />
+
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                  {filteredMenu.map((item) => (
+                    <MenuCard key={item.id} item={item} onAdd={(item) => setSelectedItemForNote(item)} />
+                  ))}
+                </div>
+
+                {isLoadingMenu && (
+                  <div className="flex flex-col items-center justify-center py-20">
+                    <div className="w-12 h-12 border-4 border-orange-200 border-t-[#FF6B00] rounded-full animate-spin mb-4" />
+                    <p className="font-bold text-slate-400">Menghubungkan ke Kasir...</p>
+                  </div>
+                )}
+
+                {!isLoadingMenu && filteredMenu.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-20 grayscale opacity-40">
+                    <ShoppingBag size={64} />
+                    <p className="mt-4 font-bold text-slate-400">
+                      {menuData.length === 0 ? (menuError || "Menu tidak ditemukan di database") : "Menu tidak ditemukan"}
+                    </p>
+                    {menuData.length === 0 && (
+                      <button
+                        onClick={() => window.location.reload()}
+                        className="mt-4 text-[#FF6B00] font-bold underline"
+                      >
+                        Coba Lagi
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </>
+        )}
+
+        {activeTab === 'orders' && (
+          <OrderHistoryModal
+            isOpen={true}
+            onClose={() => {}}
+            orders={orderHistory}
+            onViewReceipt={(order) => {
+              setCompletedOrder(order);
+              setIsNewOrder(false);
+              setShowStatus(true);
+            }}
+            isInline={true}
+          />
+        )}
+
+        {activeTab === 'game' && (
+          <GameScreen
+            onClose={() => {}}
+            onGameComplete={handleGameComplete}
+            userId={currentUser?.id || (isGuest ? 'GUEST' : null)}
+            isInline={true}
+          />
+        )}
+
+        {activeTab === 'voucher' && (
+          <VoucherRedeemModal
+            isOpen={true}
+            onClose={() => {}}
+            myVouchers={myVouchers}
+            setMyVouchers={setMyVouchers}
+            isInline={true}
+          />
+        )}
+
+        {activeTab === 'profile' && (
+          <ProfileModal
+            isOpen={true}
+            onClose={() => {}}
+            user={currentUser}
+            points={points}
+            onPointsClick={() => setIsPointsModalOpen(true)}
+            onHistoryClick={() => setActiveTab('orders')}
+            onLogout={handleLogout}
+            onRedeemVoucherClick={() => setActiveTab('voucher')}
+            isInline={true}
+          />
         )}
       </main>
 
@@ -826,7 +876,7 @@ export default function App() {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-6 left-4 right-4 z-40 flex justify-center pointer-events-none"
+            className="fixed bottom-24 left-4 right-4 z-40 flex justify-center pointer-events-none"
           >
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -988,29 +1038,6 @@ export default function App() {
         />
       )}
 
-      <OrderHistoryModal
-        isOpen={isHistoryOpen}
-        onClose={() => setIsHistoryOpen(false)}
-        orders={orderHistory}
-        onViewReceipt={(order) => {
-          setCompletedOrder(order);
-          setIsNewOrder(false);
-          setShowStatus(true);
-          setIsHistoryOpen(false);
-        }}
-      />
-
-      <ProfileModal
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-        user={currentUser}
-        points={points}
-        onPointsClick={() => setIsPointsModalOpen(true)}
-        onHistoryClick={() => setIsHistoryOpen(true)}
-        onLogout={handleLogout}
-        onRedeemVoucherClick={() => setIsRedeemOpen(true)}
-      />
-
       {/* Modal Popup Notifikasi Kring Restoran */}
       <AnimatePresence>
         {isRinging && completedOrder && (
@@ -1061,15 +1088,13 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {isGameOpen && (
-          <GameScreen
-            onClose={() => setIsGameOpen(false)}
-            onGameComplete={handleGameComplete}
-            userId={currentUser?.id || (isGuest ? 'GUEST' : null)}
-          />
-        )}
-      </AnimatePresence>
+      {isAuthenticated && tableNumber !== 'Belum Scan' && tableNumber !== 'Mode Tamu' && (
+        <BottomNavigation
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+        />
+      )}
     </div>
   );
 }

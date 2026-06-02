@@ -9,13 +9,11 @@ interface HeaderProps {
   points: number;
   onPointsClick: () => void;
   onLogout: () => void;
-  onHistoryClick: () => void;
   onProfileClick: () => void;
-  onPlayGame?: () => void;
-  onRedeemVoucherClick: () => void;
+  activeTab?: string;
 }
 
-export default function Header({ tableNumber, isGuest, zoneName, searchQuery, setSearchQuery, points, onPointsClick, onLogout, onHistoryClick, onProfileClick, onPlayGame, onRedeemVoucherClick }: HeaderProps) {
+export default function Header({ tableNumber, isGuest, zoneName, searchQuery, setSearchQuery, points, onPointsClick, onLogout, onProfileClick, activeTab = 'dashboard' }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-3 border-b border-slate-100 flex flex-col gap-3">
       <div className="max-w-4xl mx-auto w-full flex items-center justify-between">
@@ -34,7 +32,7 @@ export default function Header({ tableNumber, isGuest, zoneName, searchQuery, se
           {!isGuest && (
             <button 
               onClick={onPointsClick}
-              className="bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-[15px] flex items-center gap-2 hover:bg-amber-100/50 transition-colors cursor-pointer active:scale-95"
+              className="bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-[15px] items-center gap-2 hover:bg-amber-100/50 transition-colors cursor-pointer active:scale-95 hidden md:flex"
             >
               <div className="bg-amber-400 p-1 rounded-full text-white">
                 <Star size={10} fill="currentColor" strokeWidth={0} />
@@ -46,54 +44,15 @@ export default function Header({ tableNumber, isGuest, zoneName, searchQuery, se
             </button>
           )}
 
-          {/* Redeem Voucher Badge */}
-          <button 
-            onClick={onRedeemVoucherClick}
-            className="bg-orange-50 border border-orange-100 px-3 py-1.5 rounded-[15px] flex items-center gap-2 hover:bg-orange-100/50 transition-colors cursor-pointer active:scale-95"
-            title="Tukar Kode Voucher"
-          >
-            <div className="bg-[#FF6B00] p-1 rounded-full text-white">
-              <Ticket size={10} strokeWidth={2.5} />
-            </div>
-            <div className="text-left hidden sm:block">
-              <p className="text-[8px] text-orange-600 font-black uppercase leading-none">Tukar</p>
-              <p className="font-bold text-[11px] text-orange-700 leading-tight">Voucher</p>
-            </div>
-          </button>
-          
-          {onPlayGame && (
-            <button 
-              onClick={onPlayGame}
-              className="bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-[15px] flex items-center gap-2 hover:bg-indigo-100 transition-colors cursor-pointer active:scale-95"
-              title="Main Game"
-            >
-              <div className="bg-indigo-500 p-1 rounded-full text-white">
-                <Gamepad2 size={10} strokeWidth={3} />
-              </div>
-              <div className="text-left hidden sm:block">
-                <p className="text-[8px] text-indigo-400 font-black uppercase leading-none">Main Game</p>
-                <p className="font-bold text-[11px] text-indigo-700 leading-tight">Dapat Poin</p>
-              </div>
-            </button>
-          )}
-
           {!isGuest && (
             <button 
               onClick={onProfileClick}
-              className="w-10 h-10 bg-slate-50 text-slate-600 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-colors active:scale-95 border border-slate-200"
+              className="w-10 h-10 bg-slate-50 text-slate-600 rounded-xl items-center justify-center hover:bg-slate-100 transition-colors active:scale-95 border border-slate-200 hidden md:flex"
               title="Profil Saya"
             >
               <User size={18} />
             </button>
           )}
-
-          <button 
-            onClick={onHistoryClick}
-            className="w-10 h-10 bg-orange-50 text-[#FF6B00] rounded-xl flex items-center justify-center hover:bg-orange-100 transition-colors active:scale-95 border border-orange-100"
-            title="Riwayat Pesanan"
-          >
-            <History size={18} />
-          </button>
 
           <button 
             onClick={onLogout}
@@ -105,7 +64,7 @@ export default function Header({ tableNumber, isGuest, zoneName, searchQuery, se
         </div>
       </div>
 
-      {tableNumber !== 'Belum Scan' && tableNumber !== 'Mode Tamu' && (
+      {activeTab === 'dashboard' && tableNumber !== 'Belum Scan' && tableNumber !== 'Mode Tamu' && (
         <div className="max-w-4xl mx-auto w-full relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#FF6B00] transition-colors" size={16} />
           <input
