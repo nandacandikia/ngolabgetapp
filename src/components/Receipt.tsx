@@ -70,9 +70,9 @@ export default function Receipt({ order, onClose, onUpdateOrder }: ReceiptProps)
           {/* Order Status Timeline */}
           <div className="w-full flex items-center justify-between px-4 pb-4">
             {[
-              { label: 'Pending', icon: '🕒', current: order.status === 'PENDING' || order.status === 'Menunggu' },
-              { label: 'Diproses', icon: '👨‍🍳', current: order.status === 'DIPROSES' || order.status === 'Sedang Disiapkan' },
-              { label: 'Selesai', icon: '✅', current: order.status === 'SELESAI' || order.status === 'Selesai' }
+              { label: 'Pending', icon: '🕒', current: (order.status as string) === 'PENDING' || (order.status as string) === 'Menunggu' },
+              { label: 'Diproses', icon: '👨‍🍳', current: (order.status as string) === 'DIPROSES' || (order.status as string) === 'Sedang Disiapkan' },
+              { label: 'Selesai', icon: '✅', current: (order.status as string) === 'SELESAI' || (order.status as string) === 'Selesai' }
             ].map((step, idx) => (
               <div key={idx} className="flex flex-col items-center gap-2 relative z-10">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${step.current ? 'bg-[#FF6B00] text-white shadow-lg shadow-orange-100' : 'bg-slate-100 text-slate-400'}`}>

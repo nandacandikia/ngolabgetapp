@@ -1,67 +1,179 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, QrCode, Scan, Star, Camera, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import {
+  X, QrCode, Scan, Star, CheckCircle2, AlertCircle, Info,
+  Gift, Ticket, Zap, ChevronRight, ShoppingBag
+} from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+
+import { Voucher, MyVoucher } from '../types';
 
 interface PointsModalProps {
   isOpen: boolean;
   onClose: () => void;
   points: number;
   onClaim: (points: number) => void;
+  myVouchers: MyVoucher[];
+  setMyVouchers: React.Dispatch<React.SetStateAction<MyVoucher[]>>;
 }
 
-export default function PointsModal({ isOpen, onClose, points, onClaim }: PointsModalProps) {
-  const [activeTab, setActiveTab] = useState<'MY_CODE' | 'SCAN'>('MY_CODE');
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanResult, setScanResult] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+const VOUCHER_CATALOG: Voucher[] = [
+  {
+    id: 'v1',
+    title: 'Potongan Rp5.000',
+    description: 'Berlaku untuk pembelian minimum Rp25.000',
+    cost: 100,
+    discount: 'Rp5.000',
+    expiry: '30 hari',
+    color: 'from-orange-400 to-red-400',
+    icon: '🎫',
+  },
+  {
+    id: 'v2',
+    title: 'Gratis Es Jeruk Peras',
+    description: 'Tambah 1 Es Jeruk Peras gratis ke pesananmu',
+    cost: 50,
+    discount: 'GRATIS',
+    expiry: '14 hari',
+    color: 'from-yellow-400 to-orange-400',
+    icon: '🍊',
+  },
+  {
+    id: 'v3',
+    title: 'Potongan Rp10.000',
+    description: 'Berlaku untuk pembelian minimum Rp50.000',
+    cost: 180,
+    discount: 'Rp10.000',
+    expiry: '30 hari',
+    color: 'from-emerald-400 to-teal-500',
+    icon: '💸',
+  },
+  {
+    id: 'v4',
+    title: 'Gratis Batagor Bandung',
+    description: 'Tambah 1 porsi Batagor Bandung gratis',
+    cost: 150,
+    discount: 'GRATIS',
+    expiry: '14 hari',
+    color: 'from-purple-400 to-pink-500',
+    icon: '🥢',
+  },
+];
 
+function generateBarcodeValue(voucherId: string): string {
+  return `MASYANTO-VCR-${voucherId.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+}
+
+// Visual barcode component using CSS bars
+function BarcodeVisual({ value }: { value: string }) {
+  // Generate deterministic bar widths from the value string
+  const bars: number[] = [];
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    bars.push((code % 3) + 1); // 1, 2, or 3
+    bars.push(((code >> 2) % 2) + 1); // 1 or 2 (gap)
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div
+        className="flex items-stretch gap-0 bg-white px-4 py-5 rounded-2xl border border-slate-100 shadow-inner"
+        style={{ height: 90 }}
+      >
+        {bars.map((w, i) => (
+          <div
+            key={i}
+            style={{
+              width: w * 2.5,
+              backgroundColor: i % 2 === 0 ? '#1e293b' : 'transparent',
+              height: '100%',
+              flexShrink: 0,
+            }}
+          />
+        ))}
+      </div>
+      <p className="font-mono text-[10px] text-slate-400 tracking-widest uppercase">
+        {value.slice(-16)}
+      </p>
+    </div>
+  );
+}
+
+export default function PointsModal({ isOpen, onClose, points, onClaim, myVouchers, setMyVouchers }: PointsModalProps) {
+  const [activeTab, setActiveTab] = useState<'KLAIM' | 'TUKAR' | 'VOUCHER_SAYA'>('KLAIM');
+  const [scanResult, setScanResult] = useState<string | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [kioskSimStatus, setKioskSimStatus] = useState<'idle' | 'scanning' | 'success'>('idle');
+  const [promoCode, setPromoCode] = useState('');
+  const [selectedVoucher, setSelectedVoucher] = useState<MyVoucher | null>(null);
+  const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
+
+  // QR Scanner for receipt scan
   useEffect(() => {
     let scanner: Html5QrcodeScanner | null = null;
-
-    if (activeTab === 'SCAN' && isOpen && !scanResult) {
-      scanner = new Html5QrcodeScanner(
-        "qr-reader",
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        /* verbose= */ false
-      );
-
-      scanner.render((decodedText) => {
-        setScanResult(decodedText);
-        // Mock logic for point codes: "POIN-XXXX"
-        if (decodedText.startsWith('MASYANTO-POIN-')) {
-          const amount = parseInt(decodedText.split('-')[2]);
-          if (!isNaN(amount)) {
-            onClaim(amount);
-            setScanResult('SUCCESS');
-          } else {
-            setError('Format kode poin tidak valid.');
-          }
-        } else {
-          setError('QR Code bukan kode poin resmi Bakso Mas Yanto.');
-        }
-        scanner?.clear();
-      }, (err) => {
-        // console.error(err);
-      });
+    if (activeTab === 'KLAIM' && isOpen && !scanResult && !kioskSimStatus.startsWith('s')) {
+      // Only mount scanner if user scrolls to it — keep minimal
     }
+    return () => { scanner?.clear(); };
+  }, [activeTab, isOpen, scanResult, kioskSimStatus]);
 
-    return () => {
-      scanner?.clear();
-    };
-  }, [activeTab, isOpen, scanResult, onClaim]);
-
-  const resetScanner = () => {
+  const resetKiosk = () => {
+    setKioskSimStatus('idle');
     setScanResult(null);
-    setError(null);
+    setScanError(null);
+  };
+
+  const simulateKioskScan = () => {
+    setKioskSimStatus('scanning');
+    setTimeout(() => {
+      setKioskSimStatus('success');
+      onClaim(50);
+    }, 1800);
+  };
+
+  const handleClaimPromo = () => {
+    if (promoCode.trim().toUpperCase() === 'BAKSOMANTAP') {
+      const v = VOUCHER_CATALOG.find(v => v.id === 'v1');
+      if (v) {
+        handleRedeemVoucher(v, true); // true = gratis (tidak kurangi poin)
+      }
+    } else {
+      alert('Kode promo tidak valid!');
+    }
+    setPromoCode('');
+  };
+
+  const handleRedeemVoucher = (voucher: Voucher, isPromo: boolean = false) => {
+    if (!isPromo && points < voucher.cost) return;
+    const newVoucher: MyVoucher = {
+      ...voucher,
+      claimedAt: new Date().toLocaleString('id-ID'),
+      code: generateBarcodeValue(voucher.id),
+      used: false,
+    };
+    const updated = [newVoucher, ...myVouchers];
+    setMyVouchers(updated);
+    localStorage.setItem('maslahat_my_vouchers', JSON.stringify(updated));
+    if (!isPromo) {
+      onClaim(-voucher.cost);
+    }
+    setRedeemSuccess(voucher.title);
+    setTimeout(() => setRedeemSuccess(null), 2500);
   };
 
   if (!isOpen) return null;
 
+  const tabs: { key: 'KLAIM' | 'TUKAR' | 'VOUCHER_SAYA'; label: string; icon: React.ReactNode }[] = [
+    { key: 'KLAIM', label: 'Klaim', icon: <Zap size={14} /> },
+    { key: 'TUKAR', label: 'Tukar', icon: <Gift size={14} /> },
+    { key: 'VOUCHER_SAYA', label: 'Voucher', icon: <Ticket size={14} /> },
+  ];
+
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
+        {/* Overlay */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -70,147 +182,417 @@ export default function PointsModal({ isOpen, onClose, points, onClaim }: Points
           className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
         />
 
+        {/* Modal — slides up from bottom on mobile */}
         <motion.div
-          initial={{ scale: 0.9, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          className="bg-white w-full max-w-md rounded-[40px] overflow-hidden relative z-10 shadow-2xl flex flex-col max-h-[85vh]"
+          initial={{ y: '100%', opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: '100%', opacity: 0 }}
+          transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+          className="bg-white w-full max-w-md sm:rounded-[40px] rounded-t-[40px] overflow-hidden relative z-10 shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh]"
         >
+          {/* Drag handle (mobile) */}
+          <div className="flex justify-center pt-3 pb-1 sm:hidden">
+            <div className="w-10 h-1 bg-slate-200 rounded-full" />
+          </div>
+
           {/* Header */}
-          <div className="p-6 border-b border-slate-50 flex items-center justify-between sticky top-0 bg-white z-20">
+          <div className="px-6 pt-4 pb-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500">
-                <Star size={20} fill="currentColor" strokeWidth={0} />
+              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-md shadow-orange-200">
+                <Star size={18} fill="white" strokeWidth={0} />
               </div>
               <div>
-                <h2 className="font-black text-lg text-slate-800 leading-none">Poin Reward</h2>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Klaim & Kumpulkan</p>
+                <h2 className="font-black text-base text-slate-800 leading-none">Mas Yanto Rewards</h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Poin & Voucher Kamu</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-2.5 hover:bg-slate-50 rounded-2xl text-slate-400">
-              <X size={20} />
+            <button onClick={onClose} className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 active:scale-90 transition-all">
+              <X size={18} />
             </button>
           </div>
 
-          {/* Points Display */}
-          <div className="px-6 pt-6 pb-2">
-            <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-[32px] p-6 text-center shadow-lg shadow-amber-100 flex flex-col items-center">
-              <p className="text-white/80 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Saldo Poin Saya</p>
-              <div className="flex items-center gap-2">
-                 <p className="text-4xl font-black text-white tracking-tight">{points.toLocaleString('id-ID')}</p>
-                 <Star size={24} fill="white" strokeWidth={0} />
+          {/* Points banner */}
+          <div className="px-6 pb-4">
+            <div className="bg-gradient-to-r from-amber-400 via-orange-500 to-red-400 rounded-[28px] px-6 py-4 flex items-center justify-between shadow-lg shadow-orange-200/60 relative overflow-hidden">
+              <div className="relative z-10">
+                <p className="text-white/80 text-[10px] font-black uppercase tracking-[0.2em] leading-none">Saldo Poin</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <p className="text-3xl font-black text-white">{points.toLocaleString('id-ID')}</p>
+                  <Star size={18} fill="white" strokeWidth={0} className="mb-1" />
+                </div>
               </div>
+              <div className="relative z-10 text-right">
+                <p className="text-white/70 text-[9px] font-bold uppercase tracking-wider">Setara dengan</p>
+                <p className="text-white font-black text-sm">Rp {(points * 100).toLocaleString('id-ID')}</p>
+              </div>
+              {/* Decorative circles */}
+              <div className="absolute -right-6 -top-6 w-28 h-28 bg-white/10 rounded-full" />
+              <div className="absolute -right-2 -bottom-8 w-20 h-20 bg-white/10 rounded-full" />
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="px-6 pt-6">
-            <div className="bg-slate-100 p-1.5 rounded-3xl flex gap-1">
-              <button
-                onClick={() => { setActiveTab('MY_CODE'); resetScanner(); }}
-                className={`flex-1 py-3 rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 ${
-                  activeTab === 'MY_CODE' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400'
-                }`}
-              >
-                <QrCode size={16} />
-                KODE SAYA
-              </button>
-              <button
-                onClick={() => setActiveTab('SCAN')}
-                className={`flex-1 py-3 rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 ${
-                  activeTab === 'SCAN' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400'
-                }`}
-              >
-                <Scan size={16} />
-                SCAN KODE
-              </button>
+          <div className="px-6 pb-3">
+            <div className="bg-slate-100 p-1 rounded-2xl flex gap-1">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex-1 py-2.5 rounded-xl font-black text-[11px] transition-all flex items-center justify-center gap-1.5 ${
+                    activeTab === tab.key
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-400'
+                  }`}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Tab Content */}
-          <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
-            {activeTab === 'MY_CODE' ? (
-              <div className="flex flex-col items-center space-y-6">
-                <div className="bg-white p-6 rounded-[40px] shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-slate-50">
-                  <QRCodeSVG 
-                    value={`USER-POINTS-${points}`} 
-                    size={200}
-                    level="H"
-                    includeMargin={true}
-                  />
-                </div>
-                <div className="text-center space-y-2">
-                  <p className="text-sm font-black text-slate-800 tracking-tight">Tunjukkan Pada Kasir</p>
-                  <p className="text-[11px] text-slate-400 font-medium px-10 leading-relaxed">
-                    Scan barcode di atas saat pembayaran untuk mendapatkan atau menukar poin belanja Anda.
-                  </p>
-                </div>
-                <div className="w-full bg-blue-50 border border-blue-100 rounded-3xl p-4 flex items-start gap-3">
-                  <Info size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
-                    Dapatkan 1 poin untuk setiap menu yang Anda beli. Tukarkan poinmu dengan diskon menarik!
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center space-y-6 min-h-[300px]">
-                {scanResult === 'SUCCESS' ? (
-                  <motion.div 
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="flex flex-col items-center text-center py-12"
-                  >
-                    <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 mb-4">
-                      <CheckCircle2 size={40} />
+          {/* Tab content */}
+          <div className="flex-1 overflow-y-auto no-scrollbar px-6 pb-6">
+            <AnimatePresence mode="wait">
+
+              {/* ─── Tab: KLAIM ─── */}
+              {activeTab === 'KLAIM' && (
+                <motion.div
+                  key="klaim"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="space-y-4"
+                >
+                  {/* Simulate Kiosk Scan */}
+                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-3xl p-5 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-[#FF6B00] rounded-2xl flex items-center justify-center text-white shadow-md shadow-orange-300">
+                        <Zap size={18} />
+                      </div>
+                      <div>
+                        <p className="font-black text-slate-800 text-sm">Scan Barcode Kioska</p>
+                        <p className="text-slate-500 text-[11px] font-semibold">Klaim +50 poin setelah transaksi</p>
+                      </div>
                     </div>
-                    <h3 className="text-xl font-black text-slate-800">Poin Berhasil Diklaim!</h3>
-                    <p className="text-slate-400 text-sm font-medium mt-1">Saldo poin Anda telah diperbarui.</p>
-                    <button 
-                      onClick={resetScanner}
-                      className="mt-8 px-8 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black text-sm"
-                    >
-                      Scan Lagi
-                    </button>
-                  </motion.div>
-                ) : error ? (
-                  <motion.div 
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="flex flex-col items-center text-center py-12"
-                  >
-                    <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center text-red-500 mb-4">
-                      <AlertCircle size={40} />
-                    </div>
-                    <h3 className="text-xl font-black text-slate-800">Gagal Scan</h3>
-                    <p className="text-slate-400 text-sm font-medium mt-1">{error}</p>
-                    <button 
-                      onClick={resetScanner}
-                      className="mt-8 px-8 py-3 bg-red-500 text-white rounded-2xl font-black text-sm shadow-lg shadow-red-100"
-                    >
-                      Coba Lagi
-                    </button>
-                  </motion.div>
-                ) : (
-                  <div className="w-full space-y-4">
-                    <div id="qr-reader" className="overflow-hidden rounded-[32px] border-2 border-slate-100" />
-                    <div className="text-center space-y-1">
-                      <p className="text-sm font-black text-slate-800">Scan QR Receipt</p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Arahkan kamera ke QR Code di struk</p>
+
+                    <AnimatePresence mode="wait">
+                      {kioskSimStatus === 'idle' && (
+                        <motion.button
+                          key="btn-scan"
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          onClick={simulateKioskScan}
+                          className="w-full bg-[#FF6B00] hover:bg-[#e66000] text-white py-4 rounded-2xl font-black text-sm shadow-lg shadow-orange-300/40 active:scale-95 transition-all flex items-center justify-center gap-2.5"
+                        >
+                          <Scan size={18} />
+                          Simulasi Scan Barcode Kioska
+                        </motion.button>
+                      )}
+
+                      {kioskSimStatus === 'scanning' && (
+                        <motion.div
+                          key="scanning"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="flex flex-col items-center py-4 gap-3"
+                        >
+                          <div className="relative w-14 h-14">
+                            <div className="absolute inset-0 rounded-full border-4 border-orange-200 border-t-[#FF6B00] animate-spin" />
+                            <div className="absolute inset-2 rounded-full bg-orange-50 flex items-center justify-center">
+                              <Scan size={16} className="text-[#FF6B00]" />
+                            </div>
+                          </div>
+                          <p className="text-[#FF6B00] font-black text-sm animate-pulse">Membaca barcode kioska...</p>
+                        </motion.div>
+                      )}
+
+                      {kioskSimStatus === 'success' && (
+                        <motion.div
+                          key="success"
+                          initial={{ scale: 0.85, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="flex flex-col items-center py-3 gap-2 text-center"
+                        >
+                          <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500">
+                            <CheckCircle2 size={32} />
+                          </div>
+                          <p className="font-black text-slate-800 text-base">+50 Poin Berhasil Diklaim!</p>
+                          <p className="text-slate-400 text-xs font-semibold">Saldo poin kamu sudah diperbarui.</p>
+                          <button
+                            onClick={resetKiosk}
+                            className="mt-2 px-6 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-black text-xs"
+                          >
+                            Scan Lagi
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Form Input Kode Promo */}
+                  <div className="bg-white border border-slate-200 rounded-3xl p-5 space-y-4">
+                    <p className="font-black text-slate-800 text-sm">Punya Kode Voucher?</p>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        placeholder="Masukkan kode..." 
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value)}
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-sm uppercase outline-none focus:border-[#FF6B00] transition-colors"
+                      />
+                      <button 
+                        onClick={handleClaimPromo}
+                        disabled={!promoCode.trim()}
+                        className="bg-slate-900 text-white px-5 rounded-xl font-black text-sm disabled:opacity-50 transition-opacity active:scale-95"
+                      >
+                        Klaim
+                      </button>
                     </div>
                   </div>
-                )}
-              </div>
-            )}
+
+                  {/* QR Code saya */}
+                  <div className="border border-slate-100 rounded-3xl p-5 space-y-4">
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Kode QR Saya</p>
+                    <div className="flex justify-center">
+                      <div className="bg-white p-4 rounded-3xl shadow-md border border-slate-100">
+                        <QRCodeSVG
+                          value={`USER-POINTS-${points}`}
+                          size={160}
+                          level="H"
+                          includeMargin={true}
+                        />
+                      </div>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3 flex items-start gap-2.5">
+                      <Info size={16} className="text-blue-500 mt-0.5 shrink-0" />
+                      <p className="text-[11px] text-blue-700 font-semibold leading-relaxed">
+                        Tunjukkan QR ini ke kasir atau arahkan ke mesin kioska untuk mengumpulkan poin dari setiap pembelian.
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ─── Tab: TUKAR ─── */}
+              {activeTab === 'TUKAR' && (
+                <motion.div
+                  key="tukar"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="space-y-3"
+                >
+                  {/* Redeem success toast */}
+                  <AnimatePresence>
+                    {redeemSuccess && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 flex items-center gap-3"
+                      >
+                        <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+                        <p className="text-emerald-700 text-xs font-black">
+                          Voucher "{redeemSuccess}" berhasil ditukar! Cek di tab Voucher.
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-1">Pilih Voucher</p>
+
+                  {VOUCHER_CATALOG.map((v, i) => {
+                    const canAfford = points >= v.cost;
+                    return (
+                      <motion.div
+                        key={v.id}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.06 }}
+                        className={`border rounded-3xl overflow-hidden transition-all ${canAfford ? 'border-slate-100' : 'border-slate-100 opacity-60'}`}
+                      >
+                        <div className={`bg-gradient-to-r ${v.color} px-5 py-3.5 flex items-center gap-3`}>
+                          <span className="text-2xl">{v.icon}</span>
+                          <div className="flex-1">
+                            <p className="text-white font-black text-sm leading-tight">{v.title}</p>
+                            <p className="text-white/80 text-[11px] font-semibold">{v.description}</p>
+                          </div>
+                          <div className="bg-white/20 backdrop-blur px-3 py-1.5 rounded-xl text-center">
+                            <p className="text-white font-black text-base leading-none">{v.discount}</p>
+                          </div>
+                        </div>
+                        <div className="bg-white px-5 py-3.5 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Star size={14} fill="#f59e0b" className="text-amber-400" />
+                            <p className="font-black text-slate-800 text-sm">{v.cost} Poin</p>
+                            <span className="text-slate-300 text-xs">·</span>
+                            <p className="text-slate-400 text-xs font-semibold">Berlaku {v.expiry}</p>
+                          </div>
+                          <button
+                            disabled={!canAfford}
+                            onClick={() => handleRedeemVoucher(v)}
+                            className={`px-5 py-2.5 rounded-xl font-black text-xs transition-all active:scale-95 ${
+                              canAfford
+                                ? 'bg-[#FF6B00] text-white shadow-md shadow-orange-200'
+                                : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                            }`}
+                          >
+                            {canAfford ? 'Tukar' : 'Kurang Poin'}
+                          </button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              )}
+
+              {/* ─── Tab: VOUCHER SAYA ─── */}
+              {activeTab === 'VOUCHER_SAYA' && (
+                <motion.div
+                  key="voucher-saya"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="space-y-3"
+                >
+                  {myVouchers.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <div className="bg-slate-100 p-6 rounded-full text-slate-300 mb-4">
+                        <Ticket size={40} />
+                      </div>
+                      <h4 className="font-black text-slate-700 text-base">Belum Ada Voucher</h4>
+                      <p className="text-slate-400 text-xs font-semibold mt-1.5 max-w-xs leading-relaxed">
+                        Tukar poin kamu dengan voucher menarik di tab <strong>Tukar Poin</strong>!
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-1">Voucher Aktif ({myVouchers.filter(v => !v.used).length})</p>
+                      {myVouchers.filter(v => !v.used).map((v, i) => (
+                        <motion.button
+                          key={v.code}
+                          initial={{ opacity: 0, y: 16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.06 }}
+                          onClick={() => setSelectedVoucher(v)}
+                          className="w-full text-left border border-slate-100 rounded-3xl overflow-hidden active:scale-[0.98] transition-all shadow-sm hover:shadow-md"
+                        >
+                          <div className={`bg-gradient-to-r ${v.color} px-5 py-3 flex items-center gap-3`}>
+                            <span className="text-xl">{v.icon}</span>
+                            <div className="flex-1">
+                              <p className="text-white font-black text-sm">{v.title}</p>
+                              <p className="text-white/80 text-[11px] font-semibold">{v.description}</p>
+                            </div>
+                            <div className="bg-white/20 px-2.5 py-1 rounded-xl">
+                              <p className="text-white font-black text-sm">{v.discount}</p>
+                            </div>
+                          </div>
+                          <div className="bg-white px-5 py-3 flex items-center justify-between">
+                            <div>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Diklaim</p>
+                              <p className="text-slate-600 text-xs font-semibold">{v.claimedAt}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5 bg-orange-50 px-3 py-1.5 rounded-xl">
+                              <QrCode size={14} className="text-[#FF6B00]" />
+                              <p className="text-[#FF6B00] text-[11px] font-black">Lihat Barcode</p>
+                              <ChevronRight size={12} className="text-[#FF6B00]" />
+                            </div>
+                          </div>
+                        </motion.button>
+                      ))}
+                    </>
+                  )}
+                </motion.div>
+              )}
+
+            </AnimatePresence>
           </div>
 
-          {/* Footer Info */}
-          <div className="p-6 border-t border-slate-50 bg-slate-50/50">
-             <div className="flex items-center justify-center gap-1.5 opacity-40">
-                <Star size={12} fill="currentColor" />
-                <span className="text-[10px] font-black uppercase tracking-[0.3em]">Mas Yanto Rewards</span>
-             </div>
+          {/* Footer */}
+          <div className="px-6 py-3 border-t border-slate-50 bg-slate-50/50 flex items-center justify-center gap-1.5 opacity-40">
+            <Star size={11} fill="currentColor" className="text-slate-500" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Mas Yanto Rewards</span>
           </div>
         </motion.div>
+
+        {/* ─── Barcode Detail Modal ─── */}
+        <AnimatePresence>
+          {selectedVoucher && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedVoucher(null)}
+                className="absolute inset-0 bg-slate-900/70 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ y: 60, opacity: 0, scale: 0.95 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                exit={{ y: 60, opacity: 0, scale: 0.95 }}
+                transition={{ type: 'spring', damping: 26, stiffness: 300 }}
+                className="bg-white w-full max-w-sm rounded-[36px] overflow-hidden shadow-2xl relative z-10"
+              >
+                {/* Header gradient */}
+                <div className={`bg-gradient-to-r ${selectedVoucher.color} px-6 pt-8 pb-10 text-center relative`}>
+                  <button
+                    onClick={() => setSelectedVoucher(null)}
+                    className="absolute top-4 right-4 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white active:scale-90 transition-all"
+                  >
+                    <X size={16} />
+                  </button>
+                  <p className="text-4xl mb-2">{selectedVoucher.icon}</p>
+                  <h3 className="text-white font-black text-lg leading-tight">{selectedVoucher.title}</h3>
+                  <p className="text-white/80 text-xs font-semibold mt-1">{selectedVoucher.description}</p>
+                  <div className="absolute -bottom-px left-0 right-0 h-8 bg-white" style={{ borderRadius: '50% 50% 0 0 / 100% 100% 0 0', transform: 'scaleX(1.1)' }} />
+                </div>
+
+                {/* Barcode area */}
+                <div className="px-6 pt-4 pb-8 space-y-5">
+                  <div className="flex flex-col items-center">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Barcode Voucher</p>
+                    <BarcodeVisual value={selectedVoucher.code} />
+                  </div>
+
+                  {/* Instruction */}
+                  <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-start gap-3">
+                    <ShoppingBag size={16} className="text-amber-500 mt-0.5 shrink-0" />
+                    <p className="text-amber-800 text-[11px] font-semibold leading-relaxed">
+                      Arahkan barcode ini ke kamera mesin kioska untuk mendapatkan potongan harga secara otomatis.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 rounded-2xl p-3 text-center">
+                      <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider">Nilai</p>
+                      <p className="font-black text-slate-800 text-base mt-0.5">{selectedVoucher.discount}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-2xl p-3 text-center">
+                      <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider">Berlaku</p>
+                      <p className="font-black text-slate-800 text-base mt-0.5">{selectedVoucher.expiry}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setSelectedVoucher(null)}
+                    className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm active:scale-95 transition-all"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </AnimatePresence>
   );

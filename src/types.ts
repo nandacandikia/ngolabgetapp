@@ -32,3 +32,20 @@ export interface Order {
   rating?: number;
   review?: string;
 }
+
+export interface Voucher {
+  id: string;
+  title: string;
+  description: string;
+  cost: number;
+  discount: string;
+  expiry: string;
+  color: string;
+  icon: string;
+}
+
+export interface MyVoucher extends Voucher {
+  claimedAt: string;
+  code: string;
+  used: boolean;
+}

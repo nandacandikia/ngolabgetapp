@@ -1,4 +1,4 @@
-import { MapPin, Search, Star, LogOut, History, User } from 'lucide-react';
+import { MapPin, Search, Star, LogOut, History, User, Gamepad2, Ticket } from 'lucide-react';
 
 interface HeaderProps {
   tableNumber: string;
@@ -9,11 +9,11 @@ interface HeaderProps {
   points: number;
   onPointsClick: () => void;
   onLogout: () => void;
-  onHistoryClick: () => void;
   onProfileClick: () => void;
+  activeTab?: string;
 }
 
-export default function Header({ tableNumber, isGuest, zoneName, searchQuery, setSearchQuery, points, onPointsClick, onLogout, onHistoryClick, onProfileClick }: HeaderProps) {
+export default function Header({ tableNumber, isGuest, zoneName, searchQuery, setSearchQuery, points, onPointsClick, onLogout, onProfileClick, activeTab = 'dashboard' }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-4 py-3 border-b border-slate-100 flex flex-col gap-3">
       <div className="max-w-4xl mx-auto w-full flex items-center justify-between">
@@ -32,7 +32,7 @@ export default function Header({ tableNumber, isGuest, zoneName, searchQuery, se
           {!isGuest && (
             <button 
               onClick={onPointsClick}
-              className="bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-[15px] flex items-center gap-2 hover:bg-amber-100/50 transition-colors cursor-pointer active:scale-95"
+              className="bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-[15px] items-center gap-2 hover:bg-amber-100/50 transition-colors cursor-pointer active:scale-95 hidden md:flex"
             >
               <div className="bg-amber-400 p-1 rounded-full text-white">
                 <Star size={10} fill="currentColor" strokeWidth={0} />
@@ -43,41 +43,16 @@ export default function Header({ tableNumber, isGuest, zoneName, searchQuery, se
               </div>
             </button>
           )}
-          
-          {tableNumber !== 'Belum Scan' && tableNumber !== 'Mode Tamu' && (
-            <div className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-[15px] flex items-center gap-2 hover:bg-slate-100 transition-colors cursor-default">
-              <div className="bg-[#FF6B00] p-1 rounded-full text-white">
-                <MapPin size={10} strokeWidth={3} />
-              </div>
-              <div>
-                <p className="text-[8px] text-slate-400 font-black uppercase leading-none">Lokasi / Mode</p>
-                <p className="font-bold text-[11px] text-slate-700 leading-tight">
-                  {(() => {
-                    const base = /^\d+$/.test(tableNumber) ? `Meja ${tableNumber}` : tableNumber;
-                    return zoneName && zoneName !== 'Area Meja' ? `${base} (${zoneName})` : base;
-                  })()}
-                </p>
-              </div>
-            </div>
-          )}
 
           {!isGuest && (
             <button 
               onClick={onProfileClick}
-              className="w-10 h-10 bg-slate-50 text-slate-600 rounded-xl flex items-center justify-center hover:bg-slate-100 transition-colors active:scale-95 border border-slate-200"
+              className="w-10 h-10 bg-slate-50 text-slate-600 rounded-xl items-center justify-center hover:bg-slate-100 transition-colors active:scale-95 border border-slate-200 hidden md:flex"
               title="Profil Saya"
             >
               <User size={18} />
             </button>
           )}
-
-          <button 
-            onClick={onHistoryClick}
-            className="w-10 h-10 bg-orange-50 text-[#FF6B00] rounded-xl flex items-center justify-center hover:bg-orange-100 transition-colors active:scale-95 border border-orange-100"
-            title="Riwayat Pesanan"
-          >
-            <History size={18} />
-          </button>
 
           <button 
             onClick={onLogout}
@@ -89,7 +64,7 @@ export default function Header({ tableNumber, isGuest, zoneName, searchQuery, se
         </div>
       </div>
 
-      {tableNumber !== 'Belum Scan' && tableNumber !== 'Mode Tamu' && (
+      {activeTab === 'dashboard' && tableNumber !== 'Belum Scan' && tableNumber !== 'Mode Tamu' && (
         <div className="max-w-4xl mx-auto w-full relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#FF6B00] transition-colors" size={16} />
           <input
