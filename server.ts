@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config({ override: true });
+
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
@@ -13,9 +16,11 @@ async function startServer() {
   app.use(express.json());
 
   // API Routes
-  const KASIR_DOMAIN = "http://localhost:5000";
+  const KASIR_DOMAIN = process.env.KASIR_DOMAIN || "http://192.168.1.9:3001";
   const API_KASIR_URL = `${KASIR_DOMAIN}/api/menu`;
   const APPS_SCRIPT_URL = process.env.VITE_APPS_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbx7gVD2jM-XpZg5ZVkjSsp70RO0corDrUN9gM2SF-NkA2SMo0Iejt5wt8HF3Lw_WZqiYw/exec";
+  const AIRGESTURE_DOMAIN = process.env.AIRGESTURE_DOMAIN || "http://192.168.1.9:3002";
+  const AIRGESTURE_API_KEY = process.env.AIRGESTURE_API_KEY || "tangolab-secret-key-2026";
 
 
   app.post("/api/register", async (req, res) => {
@@ -282,42 +287,85 @@ async function startServer() {
   });
 
   app.get("/api/menu", async (req, res) => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // Naikkan ke 15 detik
-
-    try {
-      console.log(`[PROXY] Mengambil data menu dari: ${API_KASIR_URL}`);
-      const response = await fetch(API_KASIR_URL, {
-        method: "GET",
-        signal: controller.signal,
-        headers: { 
-          "bypass-tunnel-reminder": "true",
-          "Bypass-Tunnel-Reminder": "true",
-          "Accept": "application/json",
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        }
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        console.warn(`[PROXY] Kasir Admin merespon dengan status ${response.status}. Menggunakan fallback menu dummy.`);
-        return res.json(DUMMY_MENU);
+    // Ambil menu dari NGOLAB Kasir dan AIR GESTURE secara paralel
+    const fetchNgolab = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      try {
+        console.log(`[PROXY] Mengambil menu NGOLAB dari: ${API_KASIR_URL}`);
+        const response = await fetch(API_KASIR_URL, {
+          method: "GET",
+          signal: controller.signal,
+          headers: {
+            "bypass-tunnel-reminder": "true",
+            "Bypass-Tunnel-Reminder": "true",
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0",
+            "X-Loop-Prevent": "true"
+          }
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`Status ${response.status}`);
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) throw new Error("Bukan JSON");
+        const data = await response.json();
+        console.log(`=== NGOLAB: ${data.length} menu diterima ===`);
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        clearTimeout(timeoutId);
+        console.warn(`[PROXY] Gagal ambil menu NGOLAB: ${error instanceof Error ? error.message : String(error)}`);
+        return [];
       }
+    };
 
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        console.warn("[PROXY] Kasir merespon dengan HTML (Localtunnel Reminder). Menggunakan fallback menu dummy.");
-        return res.json(DUMMY_MENU);
+    const fetchAirGesture = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      try {
+        const url = `${AIRGESTURE_DOMAIN}/api/menu?outlet=ngolab`;
+        console.log(`[PROXY] Mengambil menu AIR GESTURE dari: ${url}`);
+        const response = await fetch(url, {
+          method: "GET",
+          signal: controller.signal,
+          headers: {
+            "Accept": "application/json",
+            "x-api-key": AIRGESTURE_API_KEY
+          }
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`Status ${response.status}`);
+        const data = await response.json();
+        // Beri prefix 'ag-' pada ID agar tidak tabrakan dengan NGOLAB
+        const mapped = (Array.isArray(data) ? data : []).map((item: any) => ({
+          id: `ag-${item.id}`,
+          name: item.name,
+          price: item.price,
+          category: item.category || "Main Course",
+          image_url: item.image && item.image.startsWith("/")
+            ? `${AIRGESTURE_DOMAIN}${item.image}`
+            : (item.image || item.image_url || ""),
+          status: item.inStock ? "Tersedia" : "Habis",
+          stock: item.stock || 0,
+          description: item.description || item.deskripsi || "",
+          displayed: 1,
+          isAirGesture: true
+        }));
+        console.log(`=== AIR GESTURE: ${mapped.length} menu diterima ===`);
+        return mapped;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        console.warn(`[PROXY] Gagal ambil menu AIR GESTURE: ${error instanceof Error ? error.message : String(error)}`);
+        return [];
       }
+    };
 
-      const data = await response.json();
-      console.log("=== DATA DARI ADMIN BERHASIL DITERIMA ===");
-      res.json(data);
-    } catch (error) {
-      clearTimeout(timeoutId);
-      console.warn(`[PROXY] Gagal terhubung ke Kasir Admin (${error instanceof Error ? error.message : String(error)}). Menggunakan fallback menu dummy.`);
-      res.json(DUMMY_MENU);
+    const [ngolabMenus, airGestureMenus] = await Promise.all([fetchNgolab(), fetchAirGesture()]);
+
+    if (ngolabMenus.length === 0 && airGestureMenus.length === 0) {
+      return res.status(503).json({ success: false, message: "Gagal terhubung ke semua server menu (Offline/Timeout)." });
     }
+
+    res.json([...ngolabMenus, ...airGestureMenus]);
   });
 
 
@@ -339,7 +387,10 @@ async function startServer() {
           '@': path.resolve(__dirname, '.'),
         },
       },
-      server: { middlewareMode: true, hmr: process.env.DISABLE_HMR !== 'true' },
+      server: { 
+        middlewareMode: true, 
+        hmr: process.env.DISABLE_HMR !== 'true' ? { port: 24679 } : false 
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);

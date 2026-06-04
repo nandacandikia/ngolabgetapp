@@ -25,7 +25,7 @@ export default defineConfig(({mode}) => {
       hmr: process.env.DISABLE_HMR !== 'true',
       proxy: {
         '/api': {
-          target: 'http://localhost:5000',
+          target: env.KASIR_DOMAIN || 'http://192.168.1.9:3001',
           changeOrigin: true,
         },
       },
