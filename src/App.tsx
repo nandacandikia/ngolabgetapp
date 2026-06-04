@@ -377,6 +377,30 @@ export default function App() {
     );
   };
 
+  const handleReorder = (order: Order) => {
+    setCart((prev) => {
+      let newCart = [...prev];
+      order.items.forEach((orderItem) => {
+        const existingIndex = newCart.findIndex(
+          (c) => c.id === orderItem.id && (c.note || '') === (orderItem.note || '')
+        );
+        if (existingIndex > -1) {
+          newCart[existingIndex] = {
+            ...newCart[existingIndex],
+            quantity: newCart[existingIndex].quantity + orderItem.quantity
+          };
+        } else {
+          newCart.push({
+            ...orderItem,
+            note: orderItem.note || ''
+          });
+        }
+      });
+      return newCart;
+    });
+    setIsCartOpen(true);
+  };
+
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const handleCheckout = () => {
@@ -809,6 +833,8 @@ export default function App() {
               setShowStatus(true);
             }}
             isInline={true}
+            onReorder={handleReorder}
+            onStartOrdering={() => setActiveTab('dashboard')}
           />
         )}
 
@@ -828,6 +854,8 @@ export default function App() {
             myVouchers={myVouchers}
             setMyVouchers={setMyVouchers}
             isInline={true}
+            points={points}
+            onClaimPoints={handleClaimPoints}
           />
         )}
 
