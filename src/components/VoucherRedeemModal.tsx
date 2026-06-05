@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, Ticket, Gift, CheckCircle2, AlertCircle, Sparkles, 
   ChevronRight, Copy, Check, Star, Lock, Clock, History, 
-  ArrowRight, Info, AlertTriangle
+  ArrowRight, Info, AlertTriangle, ArrowLeft
 } from 'lucide-react';
 import { Voucher, MyVoucher } from '../types';
 
@@ -15,116 +15,12 @@ interface VoucherRedeemModalProps {
   isInline?: boolean;
   points?: number;
   onClaimPoints?: (amount: number) => void;
+  promos?: any[];
 }
 
-const REDEEMABLE_CODES: Record<string, Omit<Voucher, 'id'>> = {
-  'MANTAP5K': {
-    title: 'Potongan Rp5.000',
-    description: 'Voucher potongan harga belanja minimum Rp25.000',
-    cost: 0,
-    discount: 'Rp5.000',
-    expiry: '30 hari',
-    color: 'from-orange-400 to-red-400',
-    icon: '🎫',
-  },
-  'ESJERUKGRATIS': {
-    title: 'Gratis Es Jeruk Peras',
-    description: 'Voucher gratis 1 Es Jeruk Peras',
-    cost: 0,
-    discount: 'GRATIS',
-    expiry: '14 hari',
-    color: 'from-yellow-400 to-orange-400',
-    icon: '🍊',
-  },
-  'POTONGAN10K': {
-    title: 'Potongan Rp10.000',
-    description: 'Voucher potongan harga belanja minimum Rp50.000',
-    cost: 0,
-    discount: 'Rp10.000',
-    expiry: '30 hari',
-    color: 'from-emerald-400 to-teal-500',
-    icon: '💸',
-  },
-  'BATAGORFREE': {
-    title: 'Gratis Batagor Bandung',
-    description: 'Voucher gratis 1 porsi Batagor Bandung',
-    cost: 0,
-    discount: 'GRATIS',
-    expiry: '14 hari',
-    color: 'from-purple-400 to-pink-500',
-    icon: '🥢',
-  },
-  'NGOLAB20': {
-    title: 'Potongan Rp20.000',
-    description: 'Spesial Ngolab! Potongan Rp20.000 minimum belanja Rp100.000',
-    cost: 0,
-    discount: 'Rp20.000',
-    expiry: '30 hari',
-    color: 'from-[#FF6B00] to-yellow-500',
-    icon: '🍲',
-  },
-  'DISKON25': {
-    title: 'Diskon Rp25.000',
-    description: 'Diskon akhir pekan! Potongan Rp25.000 minimum belanja Rp120.000',
-    cost: 0,
-    discount: 'Rp25.000',
-    expiry: '30 hari',
-    color: 'from-blue-600 to-indigo-600',
-    icon: '💰',
-  },
-  'BERKAH50': {
-    title: 'Voucher Berkah Rp50.000',
-    description: 'Voucher Berkah Mas Yanto! Potongan Rp50.000 minimum belanja Rp200.000',
-    cost: 0,
-    discount: 'Rp50.000',
-    expiry: '30 hari',
-    color: 'from-rose-500 to-red-600',
-    icon: '👑',
-  }
-};
+const REDEEMABLE_CODES: Record<string, Omit<Voucher, 'id'>> = {};
 
-const VOUCHER_CATALOG: Voucher[] = [
-  {
-    id: 'v1',
-    title: 'Potongan Rp5.000',
-    description: 'Berlaku untuk pembelian minimum Rp25.000',
-    cost: 100,
-    discount: 'Rp5.000',
-    expiry: '30 hari',
-    color: 'from-orange-400 to-red-400',
-    icon: '🎫',
-  },
-  {
-    id: 'v2',
-    title: 'Gratis Es Jeruk Peras',
-    description: 'Tambah 1 Es Jeruk Peras gratis ke pesananmu',
-    cost: 50,
-    discount: 'GRATIS',
-    expiry: '14 hari',
-    color: 'from-yellow-400 to-orange-400',
-    icon: '🍊',
-  },
-  {
-    id: 'v3',
-    title: 'Potongan Rp10.000',
-    description: 'Berlaku untuk pembelian minimum Rp50.000',
-    cost: 180,
-    discount: 'Rp10.000',
-    expiry: '30 hari',
-    color: 'from-emerald-400 to-teal-500',
-    icon: '💸',
-  },
-  {
-    id: 'v4',
-    title: 'Gratis Batagor Bandung',
-    description: 'Tambah 1 porsi Batagor Bandung gratis',
-    cost: 150,
-    discount: 'GRATIS',
-    expiry: '14 hari',
-    color: 'from-purple-400 to-pink-500',
-    icon: '🥢',
-  },
-];
+const VOUCHER_CATALOG: Voucher[] = [];
 
 function generateBarcodeValue(voucherId: string): string {
   return `MASYANTO-VCR-${voucherId.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
@@ -171,7 +67,8 @@ export default function VoucherRedeemModal({
   setMyVouchers, 
   isInline = false,
   points = 0,
-  onClaimPoints
+  onClaimPoints,
+  promos = []
 }: VoucherRedeemModalProps) {
   // Navigation: my_vouchers, redeem_points, promo_code
   const [activeSubTab, setActiveSubTab] = useState<'my_vouchers' | 'redeem_points' | 'promo_code'>('my_vouchers');
@@ -203,16 +100,40 @@ export default function VoucherRedeemModal({
     // Simulate backend network latency (1.2s) for a premium feel
     await new Promise((resolve) => setTimeout(resolve, 1200));
 
-    const voucherData = REDEEMABLE_CODES[cleanCode];
+    const foundPromo = promos.find(p => p.code && p.code.trim().toUpperCase() === cleanCode);
 
-    if (!voucherData) {
+    if (foundPromo && foundPromo.status !== 'Active') {
       setStatus('error');
-      setErrorMessage('Kode voucher tidak valid atau sudah kedaluwarsa. Periksa kembali penulisan kode Anda.');
+      setErrorMessage('Kode voucher ini sedang dinonaktifkan.');
       return;
     }
 
-    const voucherId = `redeem-${cleanCode.toLowerCase()}`;
-    const isAlreadyClaimed = myVouchers.some((v) => v.id === voucherId);
+    if (foundPromo && foundPromo.maxUsage && foundPromo.usageCount >= foundPromo.maxUsage) {
+      setStatus('error');
+      setErrorMessage('Kuota penggunaan kode voucher ini sudah habis.');
+      return;
+    }
+
+    const voucherData = foundPromo 
+      ? {
+          title: foundPromo.title,
+          description: foundPromo.description || `Voucher potongan harga belanja minimum Rp${Number(foundPromo.minPurchase).toLocaleString('id-ID')}`,
+          cost: 0,
+          discount: foundPromo.type === 'Persentase' ? `${foundPromo.discount}%` : `Rp${Number(foundPromo.discount).toLocaleString('id-ID')}`,
+          expiry: foundPromo.period || '30 hari',
+          color: Number(foundPromo.discount) >= 50000 || Number(foundPromo.discount) >= 20 ? 'from-rose-500 to-red-600' : (Number(foundPromo.discount) >= 20000 || Number(foundPromo.discount) >= 15 ? 'from-[#FF6B00] to-yellow-500' : 'from-orange-400 to-red-400'),
+          icon: foundPromo.type === 'Persentase' ? '🎫' : '💸',
+        }
+      : REDEEMABLE_CODES[cleanCode];
+
+    if (!voucherData) {
+      setStatus('error');
+      setErrorMessage('Kode voucher tidak valid atau sudah kedaluwatar. Periksa kembali penulisan kode Anda.');
+      return;
+    }
+
+    const voucherId = foundPromo ? `db-redeem-${foundPromo.id}` : `redeem-${cleanCode.toLowerCase()}`;
+    const isAlreadyClaimed = myVouchers.some((v) => v.id === voucherId || (v.code && v.code.toUpperCase() === cleanCode));
 
     if (isAlreadyClaimed) {
       setStatus('error');
@@ -230,7 +151,7 @@ export default function VoucherRedeemModal({
       color: voucherData.color,
       icon: voucherData.icon,
       claimedAt: new Date().toLocaleString('id-ID'),
-      code: `MASYANTO-RED-${cleanCode}-${Date.now().toString(36).toUpperCase()}`,
+      code: foundPromo ? foundPromo.code : cleanCode,
       used: false,
     };
 
@@ -374,11 +295,20 @@ export default function VoucherRedeemModal({
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Kelola & Klaim Promo</p>
           </div>
         </div>
-        {!isInline && (
+        {isInline ? (
+          <button
+            onClick={onClose}
+            className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 hover:text-slate-800 active:scale-90 transition-all cursor-pointer flex-shrink-0"
+            title="Kembali ke Menu"
+          >
+            <ArrowLeft size={16} />
+          </button>
+        ) : (
           <button
             onClick={onClose}
             disabled={status === 'validating'}
-            className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 active:scale-90 transition-all disabled:opacity-50 cursor-pointer"
+            className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 active:scale-90 transition-all disabled:opacity-50 cursor-pointer flex-shrink-0"
+            title="Tutup"
           >
             <X size={18} />
           </button>
@@ -573,72 +503,84 @@ export default function VoucherRedeemModal({
                   Pilih Voucher untuk Ditukar
                 </p>
                 <div className="grid grid-cols-1 gap-4">
-                  {VOUCHER_CATALOG.map((v) => {
-                    const canAfford = points >= v.cost;
-                    const isExchanging = exchangingId === v.id;
-
-                    return (
-                      <div 
-                        key={v.id}
-                        className={`relative rounded-3xl overflow-hidden bg-white border border-slate-100 shadow-sm flex flex-col transition-all ${
-                          !canAfford && 'opacity-65'
-                        }`}
-                      >
-                        {/* Upper Ticket Part */}
-                        <div className={`bg-gradient-to-r ${v.color} px-5 py-4 flex items-center gap-3.5 relative`}>
-                          <span className="text-2xl shrink-0">{v.icon}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white font-black text-sm truncate leading-tight">{v.title}</p>
-                            <p className="text-white/80 text-[10px] font-semibold truncate mt-0.5">{v.description}</p>
-                          </div>
-                          <div className="bg-white/20 backdrop-blur px-3 py-1.5 rounded-xl flex-shrink-0 text-center">
-                            <p className="text-white font-black text-xs sm:text-sm leading-none uppercase">{v.discount}</p>
-                          </div>
-
-                          {/* Notch circle cuts */}
-                          <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-slate-50 border border-slate-100 rounded-full z-10" />
-                          <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-slate-50 border border-slate-100 rounded-full z-10" />
-                        </div>
-
-                        {/* Dashed boundary */}
-                        <div className="w-full border-b-2 border-dashed border-slate-200/80 z-10" />
-
-                        {/* Lower Control Part */}
-                        <div className="px-5 py-3 flex items-center justify-between bg-slate-50/30">
-                          <div className="flex items-center gap-1.5">
-                            <Star size={13} fill="#f59e0b" strokeWidth={0} className="text-amber-400" />
-                            <span className="font-extrabold text-slate-800 text-xs leading-none">{v.cost} Poin</span>
-                            <span className="text-slate-300">·</span>
-                            <span className="text-[10px] text-slate-400 font-semibold">Masa aktif {v.expiry}</span>
-                          </div>
-
-                          <button
-                            disabled={!canAfford || isExchanging}
-                            onClick={() => handleExchangingPoints(v)}
-                            className={`px-5 py-2 rounded-xl font-black text-xs tracking-wide transition-all active:scale-95 flex items-center gap-1.5 ${
-                              canAfford
-                                ? 'bg-[#FF6B00] hover:bg-[#e66000] text-white shadow-md shadow-orange-100 cursor-pointer'
-                                : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200/50'
-                            }`}
-                          >
-                            {isExchanging ? (
-                              <>
-                                <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                                Proses...
-                              </>
-                            ) : canAfford ? (
-                              'Tukar Poin'
-                            ) : (
-                              <>
-                                <Lock size={11} className="text-slate-400" />
-                                Poin Kurang
-                              </>
-                            )}
-                          </button>
-                        </div>
+                  {VOUCHER_CATALOG.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center border-2 border-dashed border-slate-200 rounded-[28px] bg-white">
+                      <div className="bg-orange-50 p-4 rounded-full text-[#FF6B00] mb-3">
+                        <Gift size={24} />
                       </div>
-                    );
-                  })}
+                      <h4 className="font-extrabold text-slate-700 text-xs sm:text-sm">Katalog Penukaran Kosong</h4>
+                      <p className="text-slate-400 text-[10px] font-semibold mt-1.5 max-w-xs leading-relaxed">
+                        Saat ini belum ada voucher penukaran poin yang tersedia.
+                      </p>
+                    </div>
+                  ) : (
+                    VOUCHER_CATALOG.map((v) => {
+                      const canAfford = points >= v.cost;
+                      const isExchanging = exchangingId === v.id;
+
+                      return (
+                        <div 
+                          key={v.id}
+                          className={`relative rounded-3xl overflow-hidden bg-white border border-slate-100 shadow-sm flex flex-col transition-all ${
+                            !canAfford && 'opacity-65'
+                          }`}
+                        >
+                          {/* Upper Ticket Part */}
+                          <div className={`bg-gradient-to-r ${v.color} px-5 py-4 flex items-center gap-3.5 relative`}>
+                            <span className="text-2xl shrink-0">{v.icon}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white font-black text-sm truncate leading-tight">{v.title}</p>
+                              <p className="text-white/80 text-[10px] font-semibold truncate mt-0.5">{v.description}</p>
+                            </div>
+                            <div className="bg-white/20 backdrop-blur px-3 py-1.5 rounded-xl flex-shrink-0 text-center">
+                              <p className="text-white font-black text-xs sm:text-sm leading-none uppercase">{v.discount}</p>
+                            </div>
+
+                            {/* Notch circle cuts */}
+                            <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-slate-50 border border-slate-100 rounded-full z-10" />
+                            <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-slate-50 border border-slate-100 rounded-full z-10" />
+                          </div>
+
+                          {/* Dashed boundary */}
+                          <div className="w-full border-b-2 border-dashed border-slate-200/80 z-10" />
+
+                          {/* Lower Control Part */}
+                          <div className="px-5 py-3 flex items-center justify-between bg-slate-50/30">
+                            <div className="flex items-center gap-1.5">
+                              <Star size={13} fill="#f59e0b" strokeWidth={0} className="text-amber-400" />
+                              <span className="font-extrabold text-slate-800 text-xs leading-none">{v.cost} Poin</span>
+                              <span className="text-slate-300">·</span>
+                              <span className="text-[10px] text-slate-400 font-semibold">Masa aktif {v.expiry}</span>
+                            </div>
+
+                            <button
+                              disabled={!canAfford || isExchanging}
+                              onClick={() => handleExchangingPoints(v)}
+                              className={`px-5 py-2 rounded-xl font-black text-xs tracking-wide transition-all active:scale-95 flex items-center gap-1.5 ${
+                                canAfford
+                                  ? 'bg-[#FF6B00] hover:bg-[#e66000] text-white shadow-md shadow-orange-100 cursor-pointer'
+                                  : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200/50'
+                              }`}
+                            >
+                              {isExchanging ? (
+                                <>
+                                  <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                  Proses...
+                                </>
+                              ) : canAfford ? (
+                                'Tukar Poin'
+                              ) : (
+                                <>
+                                  <Lock size={11} className="text-slate-400" />
+                                  Poin Kurang
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -722,37 +664,65 @@ export default function VoucherRedeemModal({
                       <p className="text-[9px] text-slate-400 font-semibold mt-0.5">Klik kode untuk memasukkan secara otomatis</p>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {Object.entries(REDEEMABLE_CODES).map(([promoKey, promoVal]) => {
-                        const isClaimed = myVouchers.some((v) => v.id === `redeem-${promoKey.toLowerCase()}`);
-                        return (
-                          <button
-                            key={promoKey}
-                            type="button"
-                            onClick={() => handleSuggestionClick(promoKey)}
-                            disabled={status === 'validating'}
-                            className={`flex items-center justify-between p-3.5 rounded-2xl border text-left transition-all active:scale-[0.97] group ${
-                              isClaimed
-                                ? 'bg-slate-100/50 border-slate-200/50 opacity-60 cursor-default'
-                                : 'bg-white border-slate-100 hover:border-orange-200 hover:bg-orange-50/10 cursor-pointer shadow-sm'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <span className="text-lg shrink-0">{promoVal.icon}</span>
-                              <div className="min-w-0">
-                                <p className="font-black text-xs text-slate-800 truncate font-mono tracking-wide">{promoKey}</p>
-                                <p className="text-[9px] font-bold text-slate-400 truncate mt-0.5">{promoVal.title}</p>
+                      {(() => {
+                        const dbSuggestions = promos
+                          .filter(p => p.status === 'Active' && (!p.maxUsage || p.usageCount < p.maxUsage))
+                          .map(p => ({
+                            key: p.code,
+                            title: p.title,
+                            discount: p.type === 'Persentase' ? `${p.discount}%` : `Rp${Number(p.discount).toLocaleString('id-ID')}`,
+                            icon: p.type === 'Persentase' ? '🎫' : '💸',
+                            id: `db-redeem-${p.id}`
+                          }));
+
+                        const staticSuggestions = Object.entries(REDEEMABLE_CODES).map(([key, val]) => ({
+                          key,
+                          title: val.title,
+                          discount: val.discount,
+                          icon: val.icon,
+                          id: `redeem-${key.toLowerCase()}`
+                        }));
+
+                        const seen = new Set();
+                        const allSuggestions = [...dbSuggestions, ...staticSuggestions].filter(s => {
+                          const k = s.key.toUpperCase();
+                          if (seen.has(k)) return false;
+                          seen.add(k);
+                          return true;
+                        });
+
+                        return allSuggestions.map((suggestion) => {
+                          const isClaimed = myVouchers.some((v) => v.id === suggestion.id || (v.code && v.code.toUpperCase() === suggestion.key.toUpperCase()));
+                          return (
+                            <button
+                              key={suggestion.key}
+                              type="button"
+                              onClick={() => handleSuggestionClick(suggestion.key)}
+                              disabled={status === 'validating'}
+                              className={`flex items-center justify-between p-3.5 rounded-2xl border text-left transition-all active:scale-[0.97] group ${
+                                isClaimed
+                                  ? 'bg-slate-100/50 border-slate-200/50 opacity-60 cursor-default'
+                                  : 'bg-white border-slate-100 hover:border-orange-200 hover:bg-orange-50/10 cursor-pointer shadow-sm'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <span className="text-lg shrink-0">{suggestion.icon}</span>
+                                <div className="min-w-0">
+                                  <p className="font-black text-xs text-slate-800 truncate font-mono tracking-wide">{suggestion.key}</p>
+                                  <p className="text-[9px] font-bold text-slate-400 truncate mt-0.5">{suggestion.title}</p>
+                                </div>
                               </div>
-                            </div>
-                            <span className={`text-[9px] font-black px-2.5 py-1 rounded-lg transition-all ${
-                              isClaimed 
-                                ? 'bg-slate-100 text-slate-400' 
-                                : 'text-[#FF6B00] bg-orange-50 group-hover:bg-[#FF6B00] group-hover:text-white'
-                            }`}>
-                              {isClaimed ? 'Klaim ✓' : 'Salin'}
-                            </span>
-                          </button>
-                        );
-                      })}
+                              <span className={`text-[9px] font-black px-2.5 py-1 rounded-lg transition-all ${
+                                isClaimed 
+                                  ? 'bg-slate-100 text-slate-400' 
+                                  : 'text-[#FF6B00] bg-orange-50 group-hover:bg-[#FF6B00] group-hover:text-white'
+                              }`}>
+                                {isClaimed ? 'Klaim ✓' : 'Salin'}
+                              </span>
+                            </button>
+                          );
+                        });
+                      })()}
                     </div>
                   </div>
                 </div>

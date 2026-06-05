@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, User, Mail, Phone, Shield, Star, ShoppingBag, LogOut, Ticket } from 'lucide-react';
+import { X, User, Mail, Phone, Shield, Star, ShoppingBag, LogOut, Ticket, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface ProfileModalProps {
@@ -54,10 +54,19 @@ export default function ProfileModal({
             <p className="text-slate-400 text-xs font-semibold">Detail akun dan layanan Anda</p>
           </div>
         </div>
-        {!isInline && (
+        {isInline ? (
           <button
             onClick={onClose}
-            className="w-10 h-10 bg-slate-50 text-slate-400 hover:text-slate-600 rounded-full flex items-center justify-center border border-slate-100 transition-colors active:scale-90 cursor-pointer"
+            className="w-10 h-10 bg-slate-50 text-slate-600 hover:text-slate-800 rounded-full flex items-center justify-center border border-slate-100 transition-colors active:scale-90 cursor-pointer flex-shrink-0"
+            title="Kembali ke Menu"
+          >
+            <ArrowLeft size={18} />
+          </button>
+        ) : (
+          <button
+            onClick={onClose}
+            className="w-10 h-10 bg-slate-50 text-slate-400 hover:text-slate-600 rounded-full flex items-center justify-center border border-slate-100 transition-colors active:scale-90 cursor-pointer flex-shrink-0"
+            title="Tutup"
           >
             <X size={18} />
           </button>

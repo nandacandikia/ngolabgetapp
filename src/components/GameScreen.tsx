@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { X, Gamepad2, Award, Trophy, Zap, Star } from 'lucide-react';
+import { X, Gamepad2, Award, Trophy, Zap, Star, ArrowLeft } from 'lucide-react';
 
 interface GameScreenProps {
   onClose: () => void;
@@ -47,10 +47,19 @@ export default function GameScreen({ onClose, onGameComplete, userId, isInline =
             <p className="text-[10px] text-slate-400 font-medium">Bermain & Kumpulkan Poin</p>
           </div>
         </div>
-        {!isInline && (
+        {isInline ? (
           <button
             onClick={onClose}
-            className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full transition-colors cursor-pointer"
+            className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full transition-colors cursor-pointer flex items-center justify-center"
+            title="Kembali ke Menu"
+          >
+            <ArrowLeft size={18} />
+          </button>
+        ) : (
+          <button
+            onClick={onClose}
+            className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full transition-colors cursor-pointer flex items-center justify-center"
+            title="Tutup"
           >
             <X size={20} />
           </button>

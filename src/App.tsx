@@ -69,12 +69,36 @@ export default function App() {
   });
   const [myVouchers, setMyVouchers] = useState<MyVoucher[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem('maslahat_my_vouchers') || '[]');
+      // One-time clear of active vouchers as requested by the user
+      const clearedFlag = localStorage.getItem('maslahat_vouchers_cleared_once');
+      if (!clearedFlag) {
+        localStorage.removeItem('maslahat_my_vouchers');
+        localStorage.setItem('maslahat_vouchers_cleared_once', 'true');
+        return [];
+      }
+
+      const saved = localStorage.getItem('maslahat_my_vouchers');
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        // Filter out dummy/mock vouchers
+        const cleaned = parsed.filter((v: any) => {
+          const isDummy = ['v1', 'v2', 'v3', 'v4'].includes(v.id) ||
+                          (v.id && (v.id.startsWith('redeem-') || /^v\d+$/.test(v.id)));
+          return !isDummy && !v.used;
+        });
+        if (cleaned.length !== parsed.length) {
+          localStorage.setItem('maslahat_my_vouchers', JSON.stringify(cleaned));
+        }
+        return cleaned;
+      }
+      return [];
     } catch {
       return [];
     }
   });
   const [appliedVoucher, setAppliedVoucher] = useState<MyVoucher | null>(null);
+  const [promos, setPromos] = useState<any[]>([]);
 
   const [showScanner, setShowScanner] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
@@ -193,6 +217,20 @@ export default function App() {
         setIsLoadingMenu(false);
       }
     };
+
+    const fetchPromos = async () => {
+      try {
+        const response = await fetch('/api/promos');
+        if (response.ok) {
+          const data = await response.json();
+          setPromos(Array.isArray(data) ? data : []);
+        }
+      } catch (error) {
+        console.error("Gagal load promos:", error);
+      }
+    };
+
+    fetchPromos();
     fetchMenu();
   }, []);
 
@@ -428,10 +466,22 @@ export default function App() {
     const pointsEarned = isGuest ? 0 : cart.reduce((sum, item) => sum + item.quantity, 0);
     const finalCustomerName = customerName || "Pelanggan App";
 
+    // HITUNG DISKON VOUCHER
+    let discountAmount = 0;
+    if (appliedVoucher && appliedVoucher.discount !== 'GRATIS') {
+      if (appliedVoucher.discount.includes('%')) {
+        const pct = parseInt(appliedVoucher.discount.replace(/[^0-9]/g, ''), 10) || 0;
+        discountAmount = Math.round((cartTotal * pct) / 100);
+      } else {
+        discountAmount = parseInt(appliedVoucher.discount.replace(/[^0-9]/g, ''), 10) || 0;
+      }
+    }
+    const finalTotal = Math.max(0, cartTotal - discountAmount);
+
     const newOrder: Order = {
       id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
       items: [...cart],
-      total: cartTotal,
+      total: finalTotal,
       tableNumber,
       paymentMethod: method,
       timestamp: new Date().toLocaleString('id-ID'),
@@ -450,9 +500,10 @@ export default function App() {
       customer: finalCustomerName,
       type: "Dine In",
       paymentMethod: method,
-      amountPaid: cartTotal,
+      amountPaid: finalTotal,
       change: 0,
-      total: cartTotal,
+      total: finalTotal,
+      promoCode: appliedVoucher ? appliedVoucher.code : null,
       items: cart.map(item => ({
         id: item.id, // ID Asli dari MySQL
         name: item.name,
@@ -514,9 +565,10 @@ export default function App() {
     if (!completedOrder || !isNewOrder) return;
 
     // Jika status pesanan sudah final, tidak perlu polling lagi
-    const isFinalStatus = completedOrder.status === 'SELESAI' ||
-      completedOrder.status === 'Siap Disajikan' ||
-      completedOrder.status === 'DIBATALKAN';
+    const statusUpper = (completedOrder.status || '').toUpperCase();
+    const isFinalStatus = statusUpper === 'SELESAI' ||
+      statusUpper === 'SIAP DISAJIKAN' ||
+      statusUpper === 'DIBATALKAN';
     if (isFinalStatus) return;
 
     // Professional notification chime using Web Audio API
@@ -649,17 +701,16 @@ export default function App() {
         onClaim={handleClaimPoints}
         myVouchers={myVouchers}
         setMyVouchers={setMyVouchers}
+        promos={promos}
       />
       <PaymentModal
         isOpen={isPaymentOpen}
         onClose={() => setIsPaymentOpen(false)}
         total={cartTotal}
         onConfirm={(method, customerName) => {
-          // Mark applied voucher as used
+          // Remove used voucher from user's wallet
           if (appliedVoucher) {
-            const updated = myVouchers.map(v =>
-              v.code === appliedVoucher.code ? { ...v, used: true } : v
-            );
+            const updated = myVouchers.filter(v => v.code !== appliedVoucher.code);
             setMyVouchers(updated);
             localStorage.setItem('maslahat_my_vouchers', JSON.stringify(updated));
             setAppliedVoucher(null);
@@ -825,7 +876,7 @@ export default function App() {
         {activeTab === 'orders' && (
           <OrderHistoryModal
             isOpen={true}
-            onClose={() => {}}
+            onClose={() => setActiveTab('dashboard')}
             orders={orderHistory}
             onViewReceipt={(order) => {
               setCompletedOrder(order);
@@ -840,7 +891,7 @@ export default function App() {
 
         {activeTab === 'game' && (
           <GameScreen
-            onClose={() => {}}
+            onClose={() => setActiveTab('dashboard')}
             onGameComplete={handleGameComplete}
             userId={currentUser?.id || (isGuest ? 'GUEST' : null)}
             isInline={true}
@@ -850,19 +901,20 @@ export default function App() {
         {activeTab === 'voucher' && (
           <VoucherRedeemModal
             isOpen={true}
-            onClose={() => {}}
+            onClose={() => setActiveTab('dashboard')}
             myVouchers={myVouchers}
             setMyVouchers={setMyVouchers}
             isInline={true}
             points={points}
             onClaimPoints={handleClaimPoints}
+            promos={promos}
           />
         )}
 
         {activeTab === 'profile' && (
           <ProfileModal
             isOpen={true}
-            onClose={() => {}}
+            onClose={() => setActiveTab('dashboard')}
             user={currentUser}
             points={points}
             onPointsClick={() => setIsPointsModalOpen(true)}

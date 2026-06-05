@@ -101,6 +101,24 @@ async function startServer() {
     }
   });
 
+  app.get("/api/promos", async (req, res) => {
+    try {
+      console.log("[PROXY] Fetching promos from Kasir MySQL...");
+      const response = await fetch(`${KASIR_DOMAIN}/api/promos`, {
+        method: "GET",
+        headers: { 
+          "Accept": "application/json",
+          "Bypass-Tunnel-Reminder": "true"
+        }
+      });
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Get Promos Error:", error);
+      res.status(500).json({ success: false, message: "Gagal mengambil data promo" });
+    }
+  });
+
   // Simulasi/Dummy Data jika backend kasir offline
   const DUMMY_MENU = [
     {
@@ -287,6 +305,12 @@ async function startServer() {
   });
 
   app.get("/api/menu", async (req, res) => {
+    // Hindari loop rekursif jika server secara tidak sengaja memanggil dirinya sendiri
+    if (req.headers["x-loop-prevent"] === "true") {
+      console.warn("[PROXY] Loop terdeteksi dan dihentikan untuk request /api/menu");
+      return res.json([]);
+    }
+
     // Ambil menu dari NGOLAB Kasir dan AIR GESTURE secara paralel
     const fetchNgolab = async () => {
       const controller = new AbortController();
@@ -329,7 +353,8 @@ async function startServer() {
           signal: controller.signal,
           headers: {
             "Accept": "application/json",
-            "x-api-key": AIRGESTURE_API_KEY
+            "x-api-key": AIRGESTURE_API_KEY,
+            "X-Loop-Prevent": "true"
           }
         });
         clearTimeout(timeoutId);

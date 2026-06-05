@@ -16,50 +16,10 @@ interface PointsModalProps {
   onClaim: (points: number) => void;
   myVouchers: MyVoucher[];
   setMyVouchers: React.Dispatch<React.SetStateAction<MyVoucher[]>>;
+  promos?: any[];
 }
 
-const VOUCHER_CATALOG: Voucher[] = [
-  {
-    id: 'v1',
-    title: 'Potongan Rp5.000',
-    description: 'Berlaku untuk pembelian minimum Rp25.000',
-    cost: 100,
-    discount: 'Rp5.000',
-    expiry: '30 hari',
-    color: 'from-orange-400 to-red-400',
-    icon: '🎫',
-  },
-  {
-    id: 'v2',
-    title: 'Gratis Es Jeruk Peras',
-    description: 'Tambah 1 Es Jeruk Peras gratis ke pesananmu',
-    cost: 50,
-    discount: 'GRATIS',
-    expiry: '14 hari',
-    color: 'from-yellow-400 to-orange-400',
-    icon: '🍊',
-  },
-  {
-    id: 'v3',
-    title: 'Potongan Rp10.000',
-    description: 'Berlaku untuk pembelian minimum Rp50.000',
-    cost: 180,
-    discount: 'Rp10.000',
-    expiry: '30 hari',
-    color: 'from-emerald-400 to-teal-500',
-    icon: '💸',
-  },
-  {
-    id: 'v4',
-    title: 'Gratis Batagor Bandung',
-    description: 'Tambah 1 porsi Batagor Bandung gratis',
-    cost: 150,
-    discount: 'GRATIS',
-    expiry: '14 hari',
-    color: 'from-purple-400 to-pink-500',
-    icon: '🥢',
-  },
-];
+const VOUCHER_CATALOG: Voucher[] = [];
 
 function generateBarcodeValue(voucherId: string): string {
   return `MASYANTO-VCR-${voucherId.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
@@ -100,7 +60,7 @@ function BarcodeVisual({ value }: { value: string }) {
   );
 }
 
-export default function PointsModal({ isOpen, onClose, points, onClaim, myVouchers, setMyVouchers }: PointsModalProps) {
+export default function PointsModal({ isOpen, onClose, points, onClaim, myVouchers, setMyVouchers, promos = [] }: PointsModalProps) {
   const [activeTab, setActiveTab] = useState<'KLAIM' | 'TUKAR' | 'VOUCHER_SAYA'>('KLAIM');
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -133,13 +93,48 @@ export default function PointsModal({ isOpen, onClose, points, onClaim, myVouche
   };
 
   const handleClaimPromo = () => {
-    if (promoCode.trim().toUpperCase() === 'BAKSOMANTAP') {
-      const v = VOUCHER_CATALOG.find(v => v.id === 'v1');
-      if (v) {
-        handleRedeemVoucher(v, true); // true = gratis (tidak kurangi poin)
+    const cleanCode = promoCode.trim().toUpperCase();
+    const foundPromo = promos.find(p => p.code && p.code.trim().toUpperCase() === cleanCode);
+    
+    if (foundPromo) {
+      if (foundPromo.status !== 'Active') {
+        alert('Kode voucher ini sedang dinonaktifkan.');
+        return;
       }
+      if (foundPromo.maxUsage && foundPromo.usageCount >= foundPromo.maxUsage) {
+        alert('Kuota penggunaan kode voucher ini sudah habis.');
+        return;
+      }
+      
+      const voucherId = `db-redeem-${foundPromo.id}`;
+      const isAlreadyClaimed = myVouchers.some((v) => v.id === voucherId || (v.code && v.code.toUpperCase() === cleanCode));
+      
+      if (isAlreadyClaimed) {
+        alert('Anda sudah pernah menukarkan kode voucher ini sebelumnya.');
+        return;
+      }
+      
+      const newVoucher: MyVoucher = {
+        id: voucherId,
+        title: foundPromo.title,
+        description: foundPromo.description || `Voucher potongan harga belanja minimum Rp${Number(foundPromo.minPurchase).toLocaleString('id-ID')}`,
+        cost: 0,
+        discount: foundPromo.type === 'Persentase' ? `${foundPromo.discount}%` : `Rp${Number(foundPromo.discount).toLocaleString('id-ID')}`,
+        expiry: foundPromo.period || '30 hari',
+        color: Number(foundPromo.discount) >= 50000 || Number(foundPromo.discount) >= 20 ? 'from-rose-500 to-red-600' : (Number(foundPromo.discount) >= 20000 || Number(foundPromo.discount) >= 15 ? 'from-[#FF6B00] to-yellow-500' : 'from-orange-400 to-red-400'),
+        icon: foundPromo.type === 'Persentase' ? '🎫' : '💸',
+        claimedAt: new Date().toLocaleString('id-ID'),
+        code: foundPromo.code,
+        used: false,
+      };
+      
+      const updated = [newVoucher, ...myVouchers];
+      setMyVouchers(updated);
+      localStorage.setItem('maslahat_my_vouchers', JSON.stringify(updated));
+      setRedeemSuccess(foundPromo.title);
+      setTimeout(() => setRedeemSuccess(null), 2500);
     } else {
-      alert('Kode promo tidak valid!');
+      alert('Kode voucher tidak valid atau sudah kedaluwarsa.');
     }
     setPromoCode('');
   };
@@ -403,50 +398,60 @@ export default function PointsModal({ isOpen, onClose, points, onClaim, myVouche
                     )}
                   </AnimatePresence>
 
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-1">Pilih Voucher</p>
-
-                  {VOUCHER_CATALOG.map((v, i) => {
-                    const canAfford = points >= v.cost;
-                    return (
-                      <motion.div
-                        key={v.id}
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.06 }}
-                        className={`border rounded-3xl overflow-hidden transition-all ${canAfford ? 'border-slate-100' : 'border-slate-100 opacity-60'}`}
-                      >
-                        <div className={`bg-gradient-to-r ${v.color} px-5 py-3.5 flex items-center gap-3`}>
-                          <span className="text-2xl">{v.icon}</span>
-                          <div className="flex-1">
-                            <p className="text-white font-black text-sm leading-tight">{v.title}</p>
-                            <p className="text-white/80 text-[11px] font-semibold">{v.description}</p>
+                  {VOUCHER_CATALOG.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center border-2 border-dashed border-slate-200 rounded-[28px] bg-white">
+                      <div className="bg-orange-50 p-4 rounded-full text-[#FF6B00] mb-3">
+                        <Gift size={24} />
+                      </div>
+                      <h4 className="font-extrabold text-slate-700 text-xs sm:text-sm">Katalog Penukaran Kosong</h4>
+                      <p className="text-slate-400 text-[10px] font-semibold mt-1.5 max-w-xs leading-relaxed">
+                        Saat ini belum ada voucher penukaran poin yang tersedia.
+                      </p>
+                    </div>
+                  ) : (
+                    VOUCHER_CATALOG.map((v, i) => {
+                      const canAfford = points >= v.cost;
+                      return (
+                        <motion.div
+                          key={v.id}
+                          initial={{ opacity: 0, y: 16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.06 }}
+                          className={`border rounded-3xl overflow-hidden transition-all ${canAfford ? 'border-slate-100' : 'border-slate-100 opacity-60'}`}
+                        >
+                          <div className={`bg-gradient-to-r ${v.color} px-5 py-3.5 flex items-center gap-3`}>
+                            <span className="text-2xl">{v.icon}</span>
+                            <div className="flex-1">
+                              <p className="text-white font-black text-sm leading-tight">{v.title}</p>
+                              <p className="text-white/80 text-[11px] font-semibold">{v.description}</p>
+                            </div>
+                            <div className="bg-white/20 backdrop-blur px-3 py-1.5 rounded-xl text-center">
+                              <p className="text-white font-black text-base leading-none">{v.discount}</p>
+                            </div>
                           </div>
-                          <div className="bg-white/20 backdrop-blur px-3 py-1.5 rounded-xl text-center">
-                            <p className="text-white font-black text-base leading-none">{v.discount}</p>
+                          <div className="bg-white px-5 py-3.5 flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <Star size={14} fill="#f59e0b" className="text-amber-400" />
+                              <p className="font-black text-slate-800 text-sm">{v.cost} Poin</p>
+                              <span className="text-slate-300 text-xs">·</span>
+                              <p className="text-slate-400 text-xs font-semibold">Berlaku {v.expiry}</p>
+                            </div>
+                            <button
+                              disabled={!canAfford}
+                              onClick={() => handleRedeemVoucher(v)}
+                              className={`px-5 py-2.5 rounded-xl font-black text-xs transition-all active:scale-95 ${
+                                canAfford
+                                  ? 'bg-[#FF6B00] text-white shadow-md shadow-orange-200'
+                                  : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                              }`}
+                            >
+                              {canAfford ? 'Tukar' : 'Kurang Poin'}
+                            </button>
                           </div>
-                        </div>
-                        <div className="bg-white px-5 py-3.5 flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <Star size={14} fill="#f59e0b" className="text-amber-400" />
-                            <p className="font-black text-slate-800 text-sm">{v.cost} Poin</p>
-                            <span className="text-slate-300 text-xs">·</span>
-                            <p className="text-slate-400 text-xs font-semibold">Berlaku {v.expiry}</p>
-                          </div>
-                          <button
-                            disabled={!canAfford}
-                            onClick={() => handleRedeemVoucher(v)}
-                            className={`px-5 py-2.5 rounded-xl font-black text-xs transition-all active:scale-95 ${
-                              canAfford
-                                ? 'bg-[#FF6B00] text-white shadow-md shadow-orange-200'
-                                : 'bg-slate-100 text-slate-300 cursor-not-allowed'
-                            }`}
-                          >
-                            {canAfford ? 'Tukar' : 'Kurang Poin'}
-                          </button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
+                        </motion.div>
+                      );
+                    })
+                  )}
                 </motion.div>
               )}
 

@@ -43,8 +43,12 @@ export default function PaymentModal({
   // ── Hitung diskon voucher ──────────────────────────────────────────────────
   let discountAmount = 0;
   if (appliedVoucher && appliedVoucher.discount !== 'GRATIS') {
-    const numStr = appliedVoucher.discount.replace(/[^0-9]/g, '');
-    discountAmount = parseInt(numStr, 10) || 0;
+    if (appliedVoucher.discount.includes('%')) {
+      const pct = parseInt(appliedVoucher.discount.replace(/[^0-9]/g, ''), 10) || 0;
+      discountAmount = Math.round((total * pct) / 100);
+    } else {
+      discountAmount = parseInt(appliedVoucher.discount.replace(/[^0-9]/g, ''), 10) || 0;
+    }
   }
   const finalTotal = Math.max(0, total - discountAmount);
 
