@@ -14,13 +14,12 @@ interface VoucherRedeemModalProps {
   setMyVouchers: React.Dispatch<React.SetStateAction<MyVoucher[]>>;
   isInline?: boolean;
   points?: number;
-  onClaimPoints?: (amount: number) => void;
+  onClaimPoints?: (amount: number, source?: string) => void;
   promos?: any[];
+  voucherCatalog?: Voucher[];
 }
 
 const REDEEMABLE_CODES: Record<string, Omit<Voucher, 'id'>> = {};
-
-const VOUCHER_CATALOG: Voucher[] = [];
 
 function generateBarcodeValue(voucherId: string): string {
   return `MASYANTO-VCR-${voucherId.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
@@ -68,7 +67,8 @@ export default function VoucherRedeemModal({
   isInline = false,
   points = 0,
   onClaimPoints,
-  promos = []
+  promos = [],
+  voucherCatalog = []
 }: VoucherRedeemModalProps) {
   // Navigation: my_vouchers, redeem_points, promo_code
   const [activeSubTab, setActiveSubTab] = useState<'my_vouchers' | 'redeem_points' | 'promo_code'>('my_vouchers');
@@ -179,7 +179,7 @@ export default function VoucherRedeemModal({
     };
 
     // Deduct points
-    onClaimPoints(-voucher.cost);
+    onClaimPoints(-voucher.cost, `Penukaran Hadiah: ${voucher.title}`);
 
     // Save to user wallet
     const updated = [newVoucher, ...myVouchers];
@@ -503,7 +503,7 @@ export default function VoucherRedeemModal({
                   Pilih Voucher untuk Ditukar
                 </p>
                 <div className="grid grid-cols-1 gap-4">
-                  {VOUCHER_CATALOG.length === 0 ? (
+                  {voucherCatalog.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 px-4 text-center border-2 border-dashed border-slate-200 rounded-[28px] bg-white">
                       <div className="bg-orange-50 p-4 rounded-full text-[#FF6B00] mb-3">
                         <Gift size={24} />
@@ -514,7 +514,7 @@ export default function VoucherRedeemModal({
                       </p>
                     </div>
                   ) : (
-                    VOUCHER_CATALOG.map((v) => {
+                    voucherCatalog.map((v) => {
                       const canAfford = points >= v.cost;
                       const isExchanging = exchangingId === v.id;
 

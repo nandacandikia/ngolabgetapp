@@ -99,6 +99,8 @@ export default function App() {
   });
   const [appliedVoucher, setAppliedVoucher] = useState<MyVoucher | null>(null);
   const [promos, setPromos] = useState<any[]>([]);
+  const [voucherCatalog, setVoucherCatalog] = useState<Voucher[]>([]);
+  const [pointSettings, setPointSettings] = useState({ earningRate: 1000, minPurchase: 10000 });
 
   const [showScanner, setShowScanner] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
@@ -230,7 +232,74 @@ export default function App() {
       }
     };
 
+    const fetchPointSettings = async () => {
+      try {
+        const response = await fetch('/api/point-settings');
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.earningRate !== undefined) {
+            setPointSettings({
+              earningRate: Number(data.earningRate) || 1000,
+              minPurchase: Number(data.minPurchase) || 10000
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Gagal load point settings:", error);
+      }
+    };
+
+    const fetchPointRewards = async () => {
+      try {
+        const response = await fetch('/api/point-rewards');
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            const mapped = data.map((item: any) => {
+              const points = Number(item.points);
+              let discount = 'GRATIS';
+              let icon = '🎁';
+              let color = 'from-emerald-400 to-teal-500';
+
+              const nameLower = (item.name || '').toLowerCase();
+              if (nameLower.includes('voucher')) {
+                const match = nameLower.match(/rp\s*([\d.]+)/i);
+                discount = match ? `Rp ${match[1]}` : '💸';
+                icon = '🎫';
+                color = points >= 100 ? 'from-[#FF6B00] to-yellow-500' : 'from-orange-400 to-red-400';
+              } else if (nameLower.includes('teh')) {
+                icon = '🥤';
+                color = 'from-amber-400 to-orange-500';
+              } else if (nameLower.includes('bakso')) {
+                icon = '🍲';
+                color = 'from-red-400 to-rose-500';
+              } else if (nameLower.includes('es') || nameLower.includes('ice')) {
+                icon = '🍨';
+                color = 'from-cyan-400 to-blue-500';
+              }
+
+              return {
+                id: `reward-${item.id}`,
+                title: item.name,
+                description: item.description || `Tukarkan ${points} poin untuk mendapatkan ${item.name}`,
+                cost: points,
+                discount: discount,
+                expiry: '30 Hari',
+                color: color,
+                icon: icon
+              };
+            });
+            setVoucherCatalog(mapped);
+          }
+        }
+      } catch (error) {
+        console.error("Gagal load point rewards:", error);
+      }
+    };
+
     fetchPromos();
+    fetchPointSettings();
+    fetchPointRewards();
     fetchMenu();
   }, []);
 
@@ -245,6 +314,10 @@ export default function App() {
       if (userData) {
         setCurrentUser(userData);
         localStorage.setItem('maslahat_user', JSON.stringify(userData));
+        if (userData.points !== undefined) {
+          setPoints(userData.points);
+          localStorage.setItem('maslahat_points', userData.points.toString());
+        }
       }
     } else {
       setIsAuthenticated(true);
@@ -255,16 +328,105 @@ export default function App() {
       localStorage.removeItem('maslahat_table');
       setCurrentUser(null);
       localStorage.removeItem('maslahat_user');
+      setPoints(0);
+      localStorage.setItem('maslahat_points', '0');
     }
     setAuthView('welcome');
     setActiveTab('dashboard');
   };
 
-  const handleClaimPoints = (amount: number) => {
+  const handleClaimPoints = async (amount: number, source: string = 'Aktivitas Game/Simulasi') => {
     const newPoints = points + amount;
     setPoints(newPoints);
     localStorage.setItem('maslahat_points', newPoints.toString());
+
+    if (!isGuest && currentUser?.id) {
+      try {
+        const response = await fetch(`/api/users/${currentUser.id}/points`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount,
+            source,
+            customerName: currentUser.name
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.points !== undefined) {
+            setPoints(data.points);
+            localStorage.setItem('maslahat_points', data.points.toString());
+            setCurrentUser((prev: any) => {
+              if (prev && prev.id === currentUser.id) {
+                const updated = { ...prev, points: data.points };
+                localStorage.setItem('maslahat_user', JSON.stringify(updated));
+                return updated;
+              }
+              return prev;
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Gagal update poin di backend:", err);
+      }
+    }
   };
+
+  // Sinkronisasi poin berkala saat user terdeteksi login
+  useEffect(() => {
+    if (currentUser && currentUser.id && !isGuest) {
+      const syncPoints = async () => {
+        try {
+          const response = await fetch(`/api/users/${currentUser.id}/points`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.points !== undefined) {
+              setPoints(data.points);
+              localStorage.setItem('maslahat_points', data.points.toString());
+              
+              setCurrentUser((prev: any) => {
+                if (prev && prev.id === currentUser.id) {
+                  const updated = { ...prev, points: data.points };
+                  localStorage.setItem('maslahat_user', JSON.stringify(updated));
+                  return updated;
+                }
+                return prev;
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Gagal sinkronisasi poin di awal:", error);
+        }
+      };
+      syncPoints();
+    }
+  }, [currentUser?.id, isGuest]);
+
+  // Load order history dari backend saat user terdeteksi login
+  useEffect(() => {
+    if (currentUser && currentUser.id && !isGuest) {
+      const fetchOrderHistory = async () => {
+        try {
+          const response = await fetch(`/api/users/${currentUser.id}/orders`);
+          if (response.ok) {
+            const data = await response.json();
+            if (Array.isArray(data)) {
+              setOrderHistory(data);
+              localStorage.setItem('maslahat_order_history', JSON.stringify(data));
+            }
+          }
+        } catch (error) {
+          console.error("Gagal load riwayat pesanan dari backend:", error);
+        }
+      };
+      fetchOrderHistory();
+    } else if (isGuest) {
+      const saved = localStorage.getItem('maslahat_order_history');
+      setOrderHistory(saved ? JSON.parse(saved) : []);
+    } else {
+      setOrderHistory([]);
+    }
+  }, [currentUser?.id, isGuest]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -463,7 +625,6 @@ export default function App() {
   };
 
   const handleConfirmPayment = async (method: PaymentMethod, customerName: string) => {
-    const pointsEarned = isGuest ? 0 : cart.reduce((sum, item) => sum + item.quantity, 0);
     const finalCustomerName = customerName || "Pelanggan App";
 
     // HITUNG DISKON VOUCHER
@@ -477,6 +638,10 @@ export default function App() {
       }
     }
     const finalTotal = Math.max(0, cartTotal - discountAmount);
+
+    const pointsEarned = isGuest 
+      ? 0 
+      : (finalTotal >= pointSettings.minPurchase ? Math.floor(finalTotal / pointSettings.earningRate) : 0);
 
     const newOrder: Order = {
       id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -504,6 +669,7 @@ export default function App() {
       change: 0,
       total: finalTotal,
       promoCode: appliedVoucher ? appliedVoucher.code : null,
+      userId: isGuest ? null : (currentUser?.id || null),
       items: cart.map(item => ({
         id: item.id, // ID Asli dari MySQL
         name: item.name,
@@ -523,10 +689,29 @@ export default function App() {
         body: JSON.stringify(orderDataKasir)
       });
 
-      if (!isGuest) {
-        const newPoints = points + pointsEarned;
-        setPoints(newPoints);
-        localStorage.setItem('maslahat_points', newPoints.toString());
+      if (!isGuest && currentUser?.id) {
+        // Fetch updated points from backend
+        try {
+          const ptsRes = await fetch(`/api/users/${currentUser.id}/points`);
+          if (ptsRes.ok) {
+            const ptsData = await ptsRes.json();
+            if (ptsData && ptsData.points !== undefined) {
+              setPoints(ptsData.points);
+              localStorage.setItem('maslahat_points', ptsData.points.toString());
+              // Update user points in currentUser too
+              setCurrentUser((prev: any) => {
+                if (prev && prev.id === currentUser.id) {
+                  const updated = { ...prev, points: ptsData.points };
+                  localStorage.setItem('maslahat_user', JSON.stringify(updated));
+                  return updated;
+                }
+                return prev;
+              });
+            }
+          }
+        } catch (ptsErr) {
+          console.error("Gagal sinkronisasi poin setelah order:", ptsErr);
+        }
       }
 
       setCompletedOrder(newOrder);
@@ -556,8 +741,10 @@ export default function App() {
     localStorage.removeItem('maslahat_table');
     localStorage.removeItem('maslahat_zone');
     localStorage.removeItem('maslahat_user');
+    localStorage.removeItem('maslahat_order_history');
     setCurrentUser(null);
     setZoneName('');
+    setOrderHistory([]);
   };
 
   // POLLING STATUS PESANAN & FITUR DERING
@@ -702,6 +889,7 @@ export default function App() {
         myVouchers={myVouchers}
         setMyVouchers={setMyVouchers}
         promos={promos}
+        voucherCatalog={voucherCatalog}
       />
       <PaymentModal
         isOpen={isPaymentOpen}
@@ -908,6 +1096,7 @@ export default function App() {
             points={points}
             onClaimPoints={handleClaimPoints}
             promos={promos}
+            voucherCatalog={voucherCatalog}
           />
         )}
 
@@ -1172,7 +1361,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {isAuthenticated && tableNumber !== 'Belum Scan' && tableNumber !== 'Mode Tamu' && (
+      {isAuthenticated && (
         <BottomNavigation
           activeTab={activeTab}
           setActiveTab={setActiveTab}

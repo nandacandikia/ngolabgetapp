@@ -119,6 +119,98 @@ async function startServer() {
     }
   });
 
+  app.get("/api/point-settings", async (req, res) => {
+    try {
+      console.log("[PROXY] Fetching point settings from Kasir MySQL...");
+      const response = await fetch(`${KASIR_DOMAIN}/api/point-settings`, {
+        method: "GET",
+        headers: { 
+          "Accept": "application/json",
+          "Bypass-Tunnel-Reminder": "true"
+        }
+      });
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Get Point Settings Error:", error);
+      res.status(500).json({ success: false, message: "Gagal mengambil aturan poin" });
+    }
+  });
+
+  app.get("/api/point-rewards", async (req, res) => {
+    try {
+      console.log("[PROXY] Fetching point rewards from Kasir MySQL...");
+      const response = await fetch(`${KASIR_DOMAIN}/api/point-rewards`, {
+        method: "GET",
+        headers: { 
+          "Accept": "application/json",
+          "Bypass-Tunnel-Reminder": "true"
+        }
+      });
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Get Point Rewards Error:", error);
+      res.status(500).json({ success: false, message: "Gagal mengambil katalog hadiah" });
+    }
+  });
+
+  app.get("/api/users/:id/points", async (req, res) => {
+    try {
+      console.log(`[PROXY] Fetching user points for ID ${req.params.id} from Kasir MySQL...`);
+      const response = await fetch(`${KASIR_DOMAIN}/api/users/${req.params.id}/points`, {
+        method: "GET",
+        headers: { 
+          "Accept": "application/json",
+          "Bypass-Tunnel-Reminder": "true"
+        }
+      });
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Get User Points Error:", error);
+      res.status(500).json({ success: false, message: "Gagal mengambil poin pengguna" });
+    }
+  });
+
+  app.post("/api/users/:id/points", async (req, res) => {
+    try {
+      console.log(`[PROXY] Updating user points for ID ${req.params.id} via Kasir MySQL...`);
+      const response = await fetch(`${KASIR_DOMAIN}/api/users/${req.params.id}/points`, {
+        method: "POST",
+        body: JSON.stringify(req.body),
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Bypass-Tunnel-Reminder": "true"
+        }
+      });
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Update User Points Error:", error);
+      res.status(500).json({ success: false, message: "Gagal memperbarui poin pengguna" });
+    }
+  });
+
+  app.get("/api/users/:id/orders", async (req, res) => {
+    try {
+      console.log(`[PROXY] Fetching order history for user ID ${req.params.id} from Kasir MySQL...`);
+      const response = await fetch(`${KASIR_DOMAIN}/api/users/${req.params.id}/orders`, {
+        method: "GET",
+        headers: { 
+          "Accept": "application/json",
+          "Bypass-Tunnel-Reminder": "true"
+        }
+      });
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Get User Orders Error:", error);
+      res.status(500).json({ success: false, message: "Gagal mengambil riwayat pesanan" });
+    }
+  });
+
   // Simulasi/Dummy Data jika backend kasir offline
   const DUMMY_MENU = [
     {
@@ -346,7 +438,7 @@ async function startServer() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       try {
-        const url = `${AIRGESTURE_DOMAIN}/api/menu?outlet=ngolab`;
+        const url = `${AIRGESTURE_DOMAIN}/api/menu?outlet=coworking`;
         console.log(`[PROXY] Mengambil menu AIR GESTURE dari: ${url}`);
         const response = await fetch(url, {
           method: "GET",
@@ -360,15 +452,23 @@ async function startServer() {
         clearTimeout(timeoutId);
         if (!response.ok) throw new Error(`Status ${response.status}`);
         const data = await response.json();
+        const rawData = Array.isArray(data) ? data : [];
+        // Saring hanya menu yang berstatus ditampilkan (displayed === 1)
+        const activeData = rawData.filter((item: any) => item.displayed === 1 || item.displayed === true || item.displayed === undefined);
+
         // Beri prefix 'ag-' pada ID agar tidak tabrakan dengan NGOLAB
-        const mapped = (Array.isArray(data) ? data : []).map((item: any) => ({
+        const mapped = activeData.map((item: any) => ({
           id: `ag-${item.id}`,
           name: item.name,
           price: item.price,
           category: item.category || "Main Course",
-          image_url: item.image && item.image.startsWith("/")
-            ? `${AIRGESTURE_DOMAIN}${item.image}`
-            : (item.image || item.image_url || ""),
+          image_url: (() => {
+            const rawImg = item.image || item.image_url || "";
+            if (!rawImg) return "";
+            if (rawImg.startsWith("http")) return rawImg;
+            if (rawImg.startsWith("/")) return `${AIRGESTURE_DOMAIN}${rawImg}`;
+            return `${AIRGESTURE_DOMAIN}/${rawImg}`;
+          })(),
           status: item.inStock ? "Tersedia" : "Habis",
           stock: item.stock || 0,
           description: item.description || item.deskripsi || "",

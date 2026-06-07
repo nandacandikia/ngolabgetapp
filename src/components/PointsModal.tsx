@@ -13,13 +13,12 @@ interface PointsModalProps {
   isOpen: boolean;
   onClose: () => void;
   points: number;
-  onClaim: (points: number) => void;
+  onClaim: (points: number, source?: string) => void;
   myVouchers: MyVoucher[];
   setMyVouchers: React.Dispatch<React.SetStateAction<MyVoucher[]>>;
   promos?: any[];
+  voucherCatalog?: Voucher[];
 }
-
-const VOUCHER_CATALOG: Voucher[] = [];
 
 function generateBarcodeValue(voucherId: string): string {
   return `MASYANTO-VCR-${voucherId.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
@@ -60,7 +59,7 @@ function BarcodeVisual({ value }: { value: string }) {
   );
 }
 
-export default function PointsModal({ isOpen, onClose, points, onClaim, myVouchers, setMyVouchers, promos = [] }: PointsModalProps) {
+export default function PointsModal({ isOpen, onClose, points, onClaim, myVouchers, setMyVouchers, promos = [], voucherCatalog = [] }: PointsModalProps) {
   const [activeTab, setActiveTab] = useState<'KLAIM' | 'TUKAR' | 'VOUCHER_SAYA'>('KLAIM');
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -88,7 +87,7 @@ export default function PointsModal({ isOpen, onClose, points, onClaim, myVouche
     setKioskSimStatus('scanning');
     setTimeout(() => {
       setKioskSimStatus('success');
-      onClaim(50);
+      onClaim(50, 'Simulasi Kiosk Scan');
     }, 1800);
   };
 
@@ -151,7 +150,7 @@ export default function PointsModal({ isOpen, onClose, points, onClaim, myVouche
     setMyVouchers(updated);
     localStorage.setItem('maslahat_my_vouchers', JSON.stringify(updated));
     if (!isPromo) {
-      onClaim(-voucher.cost);
+      onClaim(-voucher.cost, `Penukaran Hadiah: ${voucher.title}`);
     }
     setRedeemSuccess(voucher.title);
     setTimeout(() => setRedeemSuccess(null), 2500);
@@ -398,7 +397,7 @@ export default function PointsModal({ isOpen, onClose, points, onClaim, myVouche
                     )}
                   </AnimatePresence>
 
-                  {VOUCHER_CATALOG.length === 0 ? (
+                  {voucherCatalog.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 px-4 text-center border-2 border-dashed border-slate-200 rounded-[28px] bg-white">
                       <div className="bg-orange-50 p-4 rounded-full text-[#FF6B00] mb-3">
                         <Gift size={24} />
@@ -409,7 +408,7 @@ export default function PointsModal({ isOpen, onClose, points, onClaim, myVouche
                       </p>
                     </div>
                   ) : (
-                    VOUCHER_CATALOG.map((v, i) => {
+                    voucherCatalog.map((v, i) => {
                       const canAfford = points >= v.cost;
                       return (
                         <motion.div

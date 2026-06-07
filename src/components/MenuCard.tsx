@@ -25,6 +25,11 @@ const MenuCard: React.FC<MenuCardProps> = ({ item, onAdd }) => {
             <span className="text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 bg-[#FF6B00] rounded-lg shadow-lg">Promo</span>
           </div>
         )}
+        {item.isAirGesture && item.inStock && (
+          <div className="absolute top-2 right-2 z-10">
+            <span className="text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 bg-cyan-600 rounded-lg shadow-lg">Air Gesture</span>
+          </div>
+        )}
         {!item.inStock && (
           <div className="absolute inset-0 bg-slate-900/40 flex items-center justify-center backdrop-blur-[2px]">
             <div className="bg-white/90 px-4 py-2 rounded-2xl shadow-xl border border-white/50 transform -rotate-12">

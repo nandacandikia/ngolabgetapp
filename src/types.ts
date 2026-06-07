@@ -10,6 +10,7 @@ export interface MenuItem {
   inStock: boolean;
   stock?: number;
   isPromo?: boolean;
+  isAirGesture?: boolean;
 }
 
 export interface CartItem extends MenuItem {
