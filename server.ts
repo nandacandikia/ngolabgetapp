@@ -917,6 +917,260 @@ async function startServer() {
     }
   });
 
+  app.get("/api/orders", async (req, res) => {
+    try {
+      console.log("[PROXY] Fetching orders from Kasir MySQL...");
+      const response = await fetch(`${KASIR_DOMAIN}/api/orders`, {
+        method: "GET",
+        headers: {
+          "bypass-tunnel-reminder": "true",
+          "Bypass-Tunnel-Reminder": "true",
+          "Accept": "application/json"
+        }
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ success: false, message: "Gagal mengambil data pesanan" });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.warn("[PROXY] Gagal ambil orders. Menggunakan fallback dummy orders.");
+      const fallback = Array.from(dummyOrders.values()).map((o, idx) => ({
+        id: `ORD-${1000 + idx}`,
+        table: 'Belum Scan',
+        customer: 'Guest',
+        total: 0,
+        status: o.status || 'Menunggu',
+        paymentMethod: 'Tunai',
+        amountPaid: 0,
+        change: 0,
+        type: 'Dine-In',
+        time: new Date(o.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+        date: new Date(o.timestamp).toISOString().split('T')[0],
+        cookingStartedAt: null,
+        paymentProofUrl: null,
+        paymentProofStatus: 'pending',
+        voucherCode: null,
+        rewardName: null,
+        pointsSpent: null,
+        notes: null,
+        items: []
+      }));
+      res.json(fallback);
+    }
+  });
+
+  app.put("/api/orders/:id/status", async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    try {
+      const response = await fetch(`${KASIR_DOMAIN}/api/orders/${id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "bypass-tunnel-reminder": "true",
+          "Bypass-Tunnel-Reminder": "true"
+        },
+        body: JSON.stringify({ status })
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ success: false, message: "Gagal update status pesanan" });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.warn("[PROXY] Gagal update status pesanan.");
+      res.json({ success: false, message: "Gagal update status pesanan" });
+    }
+  });
+
+  app.post("/api/orders/:id/payment-proof", async (req, res) => {
+    const { id } = req.params;
+
+    try {
+      const response = await fetch(`${KASIR_DOMAIN}/api/orders/${id}/payment-proof`, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "bypass-tunnel-reminder": "true",
+          "Bypass-Tunnel-Reminder": "true"
+        },
+        body: req.body
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ success: false, message: "Gagal upload bukti pembayaran" });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.warn("[PROXY] Gagal upload bukti pembayaran.");
+      res.json({ success: false, message: "Gagal upload bukti pembayaran" });
+    }
+  });
+
+  app.put("/api/orders/:id/payment-proof/status", async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    try {
+      const response = await fetch(`${KASIR_DOMAIN}/api/orders/${id}/payment-proof/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "bypass-tunnel-reminder": "true",
+          "Bypass-Tunnel-Reminder": "true"
+        },
+        body: JSON.stringify({ status })
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ success: false, message: "Gagal update status verifikasi" });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.warn("[PROXY] Gagal update status verifikasi bukti pembayaran.");
+      res.json({ success: false, message: "Gagal update status verifikasi" });
+    }
+  });
+
+  app.get("/api/orders", async (req, res) => {
+    try {
+      console.log("[PROXY] Fetching orders from Kasir MySQL...");
+      const response = await fetch(`${KASIR_DOMAIN}/api/orders`, {
+        method: "GET",
+        headers: {
+          "bypass-tunnel-reminder": "true",
+          "Bypass-Tunnel-Reminder": "true",
+          "Accept": "application/json"
+        }
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ success: false, message: "Gagal mengambil data pesanan" });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.warn("[PROXY] Gagal ambil orders. Menggunakan fallback dummy orders.");
+      const fallback = Array.from(dummyOrders.values()).map((o, idx) => ({
+        id: `ORD-${1000 + idx}`,
+        table: 'Belum Scan',
+        customer: 'Guest',
+        total: 0,
+        status: o.status || 'Menunggu',
+        paymentMethod: 'Tunai',
+        amountPaid: 0,
+        change: 0,
+        type: 'Dine-In',
+        time: new Date(o.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+        date: new Date(o.timestamp).toISOString().split('T')[0],
+        cookingStartedAt: null,
+        paymentProofUrl: null,
+        paymentProofStatus: 'pending',
+        voucherCode: null,
+        rewardName: null,
+        pointsSpent: null,
+        notes: null,
+        items: []
+      }));
+      res.json(fallback);
+    }
+  });
+
+  app.put("/api/orders/:id/status", async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    try {
+      const response = await fetch(`${KASIR_DOMAIN}/api/orders/${id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "bypass-tunnel-reminder": "true",
+          "Bypass-Tunnel-Reminder": "true"
+        },
+        body: JSON.stringify({ status })
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ success: false, message: "Gagal update status pesanan" });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.warn("[PROXY] Gagal update status pesanan.");
+      res.json({ success: false, message: "Gagal update status pesanan" });
+    }
+  });
+
+  app.post("/api/orders/:id/payment-proof", async (req, res) => {
+    const { id } = req.params;
+
+    try {
+      const response = await fetch(`${KASIR_DOMAIN}/api/orders/${id}/payment-proof`, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "bypass-tunnel-reminder": "true",
+          "Bypass-Tunnel-Reminder": "true"
+        },
+        body: req.body
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ success: false, message: "Gagal upload bukti pembayaran" });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.warn("[PROXY] Gagal upload bukti pembayaran.");
+      res.json({ success: false, message: "Gagal upload bukti pembayaran" });
+    }
+  });
+
+  app.put("/api/orders/:id/payment-proof/status", async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    try {
+      const response = await fetch(`${KASIR_DOMAIN}/api/orders/${id}/payment-proof/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "bypass-tunnel-reminder": "true",
+          "Bypass-Tunnel-Reminder": "true"
+        },
+        body: JSON.stringify({ status })
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ success: false, message: "Gagal update status verifikasi" });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.warn("[PROXY] Gagal update status verifikasi bukti pembayaran.");
+      res.json({ success: false, message: "Gagal update status verifikasi" });
+    }
+  });
+
   app.post("/api/scan", async (req, res) => {
     try {
       console.log("Tracking scan via GAS...");
