@@ -738,6 +738,7 @@ export default function App() {
     };
 
     // FORMAT DATA KERANJANG AGAR SESUAI DENGAN PERMINTAAN MYSQL ADMIN
+    const orderNotes = cart.map(item => item.note).filter(Boolean).join(', ') || undefined;
     const orderDataKasir = {
       id: newOrder.id,
       table: (() => {
@@ -752,6 +753,7 @@ export default function App() {
       total: finalTotal,
       promoCode: appliedVoucher ? appliedVoucher.code : null,
       userId: isGuest ? null : (currentUser?.id || null),
+      notes: orderNotes,
       items: cart.map(item => ({
         id: item.id, // ID Asli dari MySQL
         name: item.name,
