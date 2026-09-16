@@ -6,7 +6,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
+const __filename = (typeof process !== 'undefined' && process.argv && process.argv[1]) ? process.argv[1] : 'server.ts';
 const __dirname = path.dirname(__filename);
 
 async function startServer() {
