@@ -1220,7 +1220,15 @@ async function startServer() {
         if (!contentType || !contentType.includes("application/json")) throw new Error("Bukan JSON");
         const data = await response.json();
         console.log(`=== NGOLAB: ${data.length} menu diterima ===`);
-        return Array.isArray(data) ? data : [];
+        const base = (process.env.KASIR_DOMAIN || '').replace(/\/$/, '');
+        return Array.isArray(data) ? data.map((item: any) => ({
+          ...item,
+          image_url: item.image_url
+            ? (item.image_url.startsWith('http')
+                ? item.image_url
+                : `${base}${item.image_url}`)
+            : item.image_url,
+        })) : [];
       } catch (error) {
         clearTimeout(timeoutId);
         console.warn(`[PROXY] Gagal ambil menu NGOLAB: ${error instanceof Error ? error.message : String(error)}`);
