@@ -22,13 +22,7 @@ interface PaymentModalProps {
 }
 
 const METHOD_DETAILS: Record<string, { label: string; icon: any; color: string; detail: string; subDetail: string }> = {
-  'QRIS':    { label: 'QRIS / Semua Bank',  icon: QrCode,    color: 'text-indigo-600', detail: 'Scan QR Code',    subDetail: 'OVO, Dana, GoPay, LinkAja, BCA Mobile' },
-  'GoPay':   { label: 'GoPay',              icon: Wallet,    color: 'text-emerald-500',detail: '0812-3456-7890', subDetail: 'A/N Ngolab' },
-  'OVO':     { label: 'OVO',                icon: CreditCard,color: 'text-purple-600', detail: '0812-3456-7890', subDetail: 'A/N Ngolab' },
-  'Dana':    { label: 'Dana',               icon: Wallet,    color: 'text-blue-500',   detail: '0812-3456-7890', subDetail: 'A/N Ngolab' },
-  'BCA':     { label: 'Transfer BCA',       icon: Landmark,  color: 'text-blue-700',   detail: '1234567890',     subDetail: 'A/N Ngolab' },
-  'Mandiri': { label: 'Transfer Mandiri',   icon: Landmark,  color: 'text-amber-500',  detail: '0987654321',     subDetail: 'A/N Ngolab' },
-  'Tunai':   { label: 'Tunai / Cash',       icon: Banknote,  color: 'text-green-600',  detail: 'Bayar di Kasir', subDetail: 'Tunjukkan ID Pesanan' },
+  'QRIS': { label: 'QRIS / Semua Bank', icon: QrCode, color: 'text-indigo-600', detail: 'Scan QR Code', subDetail: 'OVO, Dana, GoPay, LinkAja, BCA Mobile' },
 };
 
 export default function PaymentModal({
@@ -93,10 +87,10 @@ export default function PaymentModal({
 
   const handlePay = () => {
     if (!customerName.trim()) { alert('Mohon masukkan nama pemesan terlebih dahulu'); return; }
-    if (selectedMethod !== 'Tunai' && !paymentProof) { alert('Mohon upload bukti bayar terlebih dahulu'); return; }
+    if (!paymentProof) { alert('Mohon upload bukti pembayaran terlebih dahulu'); return; }
     setIsProcessing(true);
     setTimeout(() => {
-      onConfirm(selectedMethod, customerName.trim());
+      onConfirm('QRIS', customerName.trim());
       setIsProcessing(false);
     }, 2000);
   };
@@ -232,30 +226,24 @@ export default function PaymentModal({
                     )}
                   </div>
 
-                  {/* ── Opsi Pemesanan ──────────────────────────────────────── */}
-                  {setOrderType && (
-                    <div className={isInline ? 'px-4 sm:px-6 pb-6' : 'px-6 pb-4'}>
-                      <div className={`bg-slate-50 p-5 rounded-[28px] border border-slate-100 ${isInline ? 'bg-white shadow-sm' : ''}`}>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1 mb-2">
-                          Opsi Pemesanan <span className="text-[#FF6B00]">*</span>
-                        </label>
-                        <div className="grid grid-cols-2 gap-3">
-                          <button
-                            onClick={() => setOrderType('Dine In')}
-                            className={`p-3 rounded-2xl border-2 font-bold text-sm transition-all ${orderType === 'Dine In' ? 'border-[#FF6B00] bg-orange-50 text-[#FF6B00]' : 'border-slate-100 text-slate-500 hover:border-slate-200 bg-white'}`}
-                          >
-                            Makan di Tempat
-                          </button>
-                          <button
-                            onClick={() => setOrderType('Takeaway')}
-                            className={`p-3 rounded-2xl border-2 font-bold text-sm transition-all ${orderType === 'Takeaway' ? 'border-[#FF6B00] bg-orange-50 text-[#FF6B00]' : 'border-slate-100 text-slate-500 hover:border-slate-200 bg-white'}`}
-                          >
-                            Bawa Pulang
-                          </button>
-                        </div>
-                      </div>
+                  {/* ── Catatan Pesanan ────────────────────────────────────── */}
+                  <div className={isInline ? 'px-4 sm:px-6 pb-6' : 'px-6 pb-4'}>
+                    <div className={`bg-slate-50 p-5 rounded-[28px] border border-slate-100 ${isInline ? 'bg-white shadow-sm' : ''}`}>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pl-1 mb-2">
+                        Catatan Pesanan <span className="text-[#FF6B00]">*</span>
+                      </label>
+                      <textarea
+                        placeholder="Contoh: Tidak pakai sambal, extra mie, dll."
+                        rows={3}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Simpan catatan ke window state agar bisa dibaca handleConfirmPayment
+                          (window as any).__orderNote = value;
+                        }}
+                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl text-slate-800 font-bold text-sm focus:border-[#FF6B00] focus:ring-2 focus:ring-orange-100 transition-all focus:outline-none resize-none"
+                      />
                     </div>
-                  )}
+                  </div>
 
                   {/* ── Nama Pemesan ──────────────────────────────────────── */}
                   <div className={isInline ? 'px-4 sm:px-6 pb-6' : 'px-6 pb-4'}>
@@ -275,21 +263,14 @@ export default function PaymentModal({
 
                   {/* ── Metode Pembayaran (Selected) ────────────────────────── */}
                   <div className={isInline ? 'px-4 sm:px-6 pb-6 space-y-4' : 'px-6 pb-4 space-y-4'}>
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest">Metode Pembayaran</h3>
-                      <button onClick={() => setShowAllMethods(true)} className="text-[#FF6B00] text-xs font-bold hover:underline flex items-center gap-1">
-                        Lihat semua opsi <ChevronRight size={14} />
-                      </button>
-                    </div>
-
                     <div className="bg-slate-50 border border-slate-100 p-4 rounded-[24px] flex items-center justify-between shadow-sm">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2.5 rounded-xl bg-white shadow-sm ${METHOD_DETAILS[selectedMethod].color}`}>
-                          {React.createElement(METHOD_DETAILS[selectedMethod].icon, { size: 20 })}
+                        <div className={`p-2.5 rounded-xl bg-white shadow-sm ${METHOD_DETAILS['QRIS'].color}`}>
+                          {React.createElement(METHOD_DETAILS['QRIS'].icon, { size: 20 })}
                         </div>
                         <div className="text-left">
-                          <p className="font-black text-slate-800 text-sm">{METHOD_DETAILS[selectedMethod].label}</p>
-                          <p className="text-[10px] text-slate-400 font-bold">{METHOD_DETAILS[selectedMethod].subDetail}</p>
+                          <p className="font-black text-slate-800 text-sm">{METHOD_DETAILS['QRIS'].label}</p>
+                          <p className="text-[10px] text-slate-400 font-bold">{METHOD_DETAILS['QRIS'].subDetail}</p>
                         </div>
                       </div>
                       <div className="bg-[#FF6B00] rounded-full p-1">
@@ -297,66 +278,30 @@ export default function PaymentModal({
                       </div>
                     </div>
 
-                    {/* QR Code display if QRIS is selected */}
-                    {selectedMethod === 'QRIS' && (
-                      <div className="flex flex-col items-center py-5 bg-orange-50/50 rounded-[24px] border border-orange-100">
-                        <div className="bg-white p-4 rounded-[20px] shadow-sm mb-4">
-                          <img src="/qris.png" alt="QRIS" className="w-56 h-56 object-contain rounded-xl" />
-                        </div>
-                        <p className="text-xs font-bold text-slate-500 text-center px-6 leading-relaxed">
-                          Scan QR Code ini menggunakan E-Wallet atau M-Banking Anda
-                        </p>
+                    {/* QR Code display */}
+                    <div className="flex flex-col items-center py-5 bg-orange-50/50 rounded-[24px] border border-orange-100">
+                      <div className="bg-white p-4 rounded-[20px] shadow-sm mb-4">
+                        <img src="/qris.png" alt="QRIS" className="w-56 h-56 object-contain rounded-xl" />
                       </div>
-                    )}
-                    
-                    {/* Bank Transfer Details if selected */}
-                    {(selectedMethod === 'BCA' || selectedMethod === 'Mandiri' || selectedMethod === 'GoPay' || selectedMethod === 'OVO' || selectedMethod === 'Dana') && (
-                      <div className="space-y-4 py-2 bg-orange-50/30 rounded-[24px] p-4 border border-orange-100">
-                        <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm">
-                          <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">No. Rekening / Virtual Account</p>
-                            <p className="font-bold text-slate-800 tracking-wide text-lg">{METHOD_DETAILS[selectedMethod].detail}</p>
-                          </div>
-                          <button
-                            onClick={() => copyToClipboard(METHOD_DETAILS[selectedMethod].detail)}
-                            className="p-3 bg-orange-50 text-[#FF6B00] rounded-xl hover:bg-orange-100 transition-colors active:scale-95"
-                          >
-                            {copied ? <CheckCircle2 size={20} /> : <Copy size={20} />}
-                          </button>
-                        </div>
-                        <div className="text-xs font-medium text-slate-500 bg-white p-4 rounded-2xl leading-relaxed text-center shadow-sm">
-                          Transfer tepat <span className="font-black text-[#FF6B00]">Rp {finalTotal.toLocaleString('id-ID')}</span> agar pesanan dapat diproses.
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Cash Info */}
-                    {selectedMethod === 'Tunai' && (
-                      <div className="bg-amber-50 border border-amber-100 rounded-[24px] p-4 flex items-start gap-3">
-                        <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-amber-500 shadow-sm shrink-0 mt-0.5">
-                          <Banknote size={16} />
-                        </div>
-                        <p className="text-[11px] text-amber-700 font-medium leading-relaxed">
-                          Tunjukkan ID pesanan kepada kasir setelah mengirim pesanan ini. Pembayaran dilakukan di kasir.
-                        </p>
-                      </div>
-                    )}
+                      <p className="text-xs font-bold text-slate-500 text-center px-6 leading-relaxed">
+                        Scan QR Code ini menggunakan E-Wallet atau M-Banking Anda
+                      </p>
+                    </div>
                   </div>
 
-                  {/* ── Upload Bukti Transfer ────────────────────────────── */}
-                  {selectedMethod !== 'Tunai' && (
-                    <div className="px-6 pb-4 space-y-3">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
-                        Upload Bukti Transfer <span className="text-red-500">*</span>
-                      </p>
-                      <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex items-start gap-3">
-                        <div className="w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center text-white shrink-0 mt-0.5">
-                          <span className="text-[10px] font-black">!</span>
-                        </div>
-                        <p className="text-[11px] text-amber-700 font-medium leading-relaxed">
-                          Bukti transfer akan diverifikasi oleh kasir. Pesanan baru diproses setelah pembayaran terkonfirmasi.
-                        </p>
+                  {/* ── Upload Bukti Pembayaran ────────────────────────────── */}
+                  <div className="px-6 pb-4 space-y-3">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">
+                      Upload Bukti Pembayaran <span className="text-red-500">*</span>
+                    </p>
+                    <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 flex items-start gap-3">
+                      <div className="w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center text-white shrink-0 mt-0.5">
+                        <span className="text-[10px] font-black">!</span>
                       </div>
+                      <p className="text-[11px] text-amber-700 font-medium leading-relaxed">
+                        Bukti pembayaran akan diverifikasi oleh kasir. Pesanan baru diproses setelah pembayaran terkonfirmasi.
+                      </p>
+                    </div>
                       {!paymentProof ? (
                         <button
                           onClick={() => fileInputRef.current?.click()}
@@ -422,9 +367,7 @@ export default function PaymentModal({
                     <ChevronRight size={20} />
                   </button>
                   <p className="text-center text-[10px] text-slate-400 font-bold mt-4 leading-relaxed">
-                    {selectedMethod === 'Tunai'
-                      ? 'Pembayaran dilakukan langsung di kasir'
-                      : 'Pembayaran akan diverifikasi oleh kasir'}
+                    Pembayaran akan diverifikasi oleh kasir
                   </p>
                 </div>
               </>

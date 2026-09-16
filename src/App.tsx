@@ -737,6 +737,7 @@ export default function App() {
     };
 
     // FORMAT DATA KERANJANG AGAR SESUAI DENGAN PERMINTAAN MYSQL ADMIN
+    const orderNotes = (window as any).__orderNote || '';
     const orderDataKasir = {
       id: newOrder.id,
       table: (() => {
@@ -750,14 +751,15 @@ export default function App() {
       amountPaid: finalTotal,
       change: 0,
       total: finalTotal,
+      notes: orderNotes || undefined,
       promoCode: appliedVoucher ? appliedVoucher.code : null,
       userId: isGuest ? null : (currentUser?.id || null),
       items: cart.map(item => ({
-        id: item.id, // ID Asli dari MySQL
+        id: item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity,
-        note: item.note || ""
+        note: item.note || orderNotes || ''
       }))
     };
 
