@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { X, QrCode, Wallet, CreditCard, CheckCircle2, ChevronRight, Copy, Landmark, Banknote, Upload, Image as ImageIcon, Trash2, Ticket } from 'lucide-react';
 import { PaymentMethod, MyVoucher } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { validateVoucher } from '../services/tangolabService.tsx';
+import { validateVoucher } from '../services/tangolabService';
 
 interface PaymentModalProps {
   isOpen: boolean;
